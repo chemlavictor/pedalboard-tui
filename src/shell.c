@@ -19,6 +19,7 @@
 #include <time.h>    /* nanosleep (POSIX) */
 #include <dirent.h>  /* opendir/readdir */
 #include <sys/types.h>
+#include <sys/select.h> /* select (non-bloquant, tdp_key_available) */
 #endif
 
 /* Lecture d'un caractere brut (Tab=9, Backspace=8/127) :
@@ -28,6 +29,19 @@ static int tdp_getch(void) {
   return _getch();
 #else
   return getchar();
+#endif
+}
+
+/* Retourne 1 s'il y a une touche en attente (non-bloquant), 0 sinon. */
+static int tdp_key_available(void) {
+#ifdef _WIN32
+  return _kbhit();
+#else
+  fd_set fds;
+  struct timeval tv = {0, 0}; /* timeout 0 = non-bloquant */
+  FD_ZERO(&fds);
+  FD_SET(0, &fds);
+  return (select(1, &fds, NULL, NULL, &tv) > 0) ? 1 : 0;
 #endif
 }
 
@@ -134,6 +148,7 @@ static int cmd_help(int argc, char **argv) {
     "  <Entree>        Arrete l'enregistrement + sauvegarde WAV horodate\n"
     "  status          Snapshot du niveau (RMS/peak in/out, etat)\n"
     "  s               (alias de status)\n"
+    "  test          Accordeur : note + cents en continu (Ctrl+C ou touche pour arreter)\n"
     "  watch           Affichage continu du niveau (on/off)\n"
     "  pedals          Liste les pedales disponibles\n"
     "  info <nom>      Details d'une pedale (params, min/max/defaut)\n"
@@ -473,6 +488,7 @@ static int cmd_status(int argc, char **argv) {
 }
 
 static int g_watch = 0;
+static int g_tuner_on = 0;
 
 static int cmd_watch(int argc, char **argv) {
   (void)argc; (void)argv;
@@ -481,27 +497,44 @@ static int cmd_watch(int argc, char **argv) {
   return 0;
 }
 
-/* Accordeur : analyse le signal d'entree et affiche la note + ecart. */
+/* Affiche un snapshot de l'accordeur (une mesure). */
+static void print_tuner_line(void) {
+  double sr = atomic_load_explicit(&g_sh.sr, memory_order_relaxed);
+  if (sr <= 0.0) sr = 48000.0;
+  static float buf[4096];
+  int n = audio_input_preview(buf, 4096);
+  if (n < 64) {
+    printf("\r  (pas de signal — joue une note)");
+    fflush(stdout);
+    return;
+  }
+  tuner_result r;
+  tuner_analyze(buf, n, sr, &r);
+  /* Affiche sur une ligne (retour chariot pour l'echantillonnage). */
+  printf("\r  ");
+  if (r.has_note) {
+    const char *state = (r.cents == 0) ? "JUSTE" : (r.cents > 0 ? "aigu" : "grave");
+    printf("%-4s (%5.1f Hz)  %+3d cents (%s)  [%2.0f%%]", r.note, r.freq, r.cents, state, r.confidence * 100.0f);
+  } else {
+    printf("(pas de note detectee — joue une note)");
+  }
+  fflush(stdout);
+}
+
+/* Accordeur : mode continu. 'test' l'active, Ctrl+C (ou 'test') l'arrete. */
 static int cmd_test(int argc, char **argv) {
   (void)argc; (void)argv;
+  if (g_tuner_on) {
+    g_tuner_on = 0;
+    printf("\nTDP: accordeur ARRETE\n");
+    return 0;
+  }
   if (!atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
     printf("TDP: demarre le flux d'abord (start) pour utiliser l'accordeur\n");
     return 0;
   }
-  double sr = atomic_load_explicit(&g_sh.sr, memory_order_relaxed);
-  if (sr <= 0.0) sr = 48000.0;
-
-  /* Lit l'apercu du signal d'entree (les derniers echantillons). */
-  static float buf[4096];
-  int n = audio_input_preview(buf, 4096);
-  if (n < 64) {
-    printf("  (pas assez de signal — joue une note)\n");
-    return 0;
-  }
-
-  tuner_result r;
-  tuner_analyze(buf, n, sr, &r);
-  tuner_print(&r);
+  g_tuner_on = 1;
+  printf("TDP: accordeur ON — joue une note. Appuie sur une touche (Ctrl+C) pour arreter.\n");
   return 0;
 }
 
@@ -682,7 +715,7 @@ static int readline_tdp(char *buf, int bufsz) {
   for (;;) {
     int c = tdp_getch();
     if (c == EOF) return -1;
-    if (c == 3) { /* Ctrl+C : quit */
+    if (c == 3) { /* Ctrl+C : quit le shell (le mode tuner gere ses propres touches) */
       printf("\n");
       return -2;
     }
@@ -892,6 +925,22 @@ void shell_run(const char *script_path) {
       print_status_line();
       fflush(stdout);
       tdp_sleep_ms(100); /* ~100 ms */
+      continue;
+    }
+    /* Mode accordeur : affiche la note en continu (retour chariot) + pause.
+     * Lire les touches en non-bloquant : Ctrl+C (ou n'importe quelle touche)
+     * arrete le mode et retourne au prompt. */
+    if (g_tuner_on && atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
+      print_tuner_line();
+      tdp_sleep_ms(150); /* ~150 ms : cadence lisible */
+      /* Verifie s'il y a une touche ; si oui, arrete le tuner. */
+      if (tdp_key_available()) {
+        int k = tdp_getch();
+        /* Degage la sequence (ex. fleche) pour ne pas la perdre. */
+        if (k == 27) { tdp_getch(); tdp_getch(); }
+        g_tuner_on = 0;
+        printf("\nTDP: accordeur ARRETE (touche : %d)\n", k);
+      }
       continue;
     }
     if (interactive) {
