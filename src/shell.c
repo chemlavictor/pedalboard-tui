@@ -72,6 +72,7 @@ static void shell_raw_off(void) {
 #include "audio.h"
 #include "wav.h"
 #include "tuner.h"
+#include "devtest.h"
 
 #define LINE_MAX 512
 
@@ -102,6 +103,7 @@ static int cmd_record(int argc, char **argv);
 static int cmd_status(int argc, char **argv);
 static int cmd_watch(int argc, char **argv);
 static int cmd_test(int argc, char **argv);
+static int cmd_test_out(int argc, char **argv);
 
 /* Table de dispatch. Les commandes audio (in/out/start/stop/record/load...)
  * seront branchées dans les phases suivantes (audio.c / wav.c). */
@@ -124,6 +126,7 @@ static struct { const char *name; cmd_fn fn; } g_cmds[] = {
   { "s",      cmd_status },  /* alias de status */
   { "watch",  cmd_watch },
   { "test",   cmd_test },    /* accordeur */
+  { "test_out", cmd_test_out }, /* test des sorties audio */
 };
 static const int N_CMDS = (int)(sizeof g_cmds / sizeof g_cmds[0]);
 
@@ -149,6 +152,7 @@ static int cmd_help(int argc, char **argv) {
     "  status          Snapshot du niveau (RMS/peak in/out, etat)\n"
     "  s               (alias de status)\n"
     "  test          Accordeur : note + cents en continu ('q'/Entree = arreter, Ctrl+C = quitter)\n"
+    "  test_out      Test des sorties : joue un bip sur chaque device (pour identifier le bon)\n"
     "  watch           Affichage continu du niveau (on/off)\n"
     "  pedals          Liste les pedales disponibles\n"
     "  info <nom>      Details d'une pedale (params, min/max/defaut)\n"
@@ -535,6 +539,13 @@ static int cmd_test(int argc, char **argv) {
   }
   g_tuner_on = 1;
   printf("TDP: accordeur ON — joue une note. 'q' ou Entree pour arreter, Ctrl+C pour quitter.\n");
+  return 0;
+}
+
+/* Test des sorties audio : joue un bip sur chaque device. */
+static int cmd_test_out(int argc, char **argv) {
+  (void)argc; (void)argv;
+  devtest_test_outputs();
   return 0;
 }
 

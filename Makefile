@@ -21,7 +21,7 @@ VERSION_FLAG := -DTDP_GIT_HASH=\"$(GIT_HASH)\"
 
 # Cœur commun (CLI) — réutilisé identique sur Linux et Windows.
 CORE_SRCS := $(SRC_DIR)/main.c $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c \
-             $(SRC_DIR)/audio.c $(SRC_DIR)/dsp.c $(SRC_DIR)/params.c $(SRC_DIR)/wav.c $(SRC_DIR)/tuner.c
+             $(SRC_DIR)/audio.c $(SRC_DIR)/dsp.c $(SRC_DIR)/params.c $(SRC_DIR)/wav.c $(SRC_DIR)/tuner.c $(SRC_DIR)/devtest.c
 
 LINUX_SRCS  := $(CORE_SRCS)
 WIN_SRCS    := $(CORE_SRCS)
@@ -61,8 +61,8 @@ test: $(TEST) $(TEST_TDP) $(TEST_WAV) $(TEST_TUNER)
 $(TEST): tests/test_dsp.c $(INC_DIR)/dsp.h $(INC_DIR)/pedals.h $(SRC_DIR)/dsp.c $(SRC_DIR)/pedals.c | $(BUILD)
 	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_dsp.c $(SRC_DIR)/dsp.c $(SRC_DIR)/pedals.c -lm
 
-$(TEST_TDP): tests/test_tdp.c $(INC_DIR)/shell.h $(INC_DIR)/pedals.h $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c $(SRC_DIR)/wav.c $(SRC_DIR)/audio.c $(SRC_DIR)/tuner.c | $(BUILD)
-	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_tdp.c $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c $(SRC_DIR)/wav.c $(SRC_DIR)/audio.c $(SRC_DIR)/tuner.c -lportaudio -lm
+$(TEST_TDP): tests/test_tdp.c $(INC_DIR)/shell.h $(INC_DIR)/pedals.h $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c $(SRC_DIR)/wav.c $(SRC_DIR)/audio.c $(SRC_DIR)/tuner.c $(SRC_DIR)/devtest.c | $(BUILD)
+	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_tdp.c $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c $(SRC_DIR)/wav.c $(SRC_DIR)/audio.c $(SRC_DIR)/tuner.c $(SRC_DIR)/devtest.c -lportaudio -lm
 
 $(TEST_WAV): tests/test_wav.c $(INC_DIR)/wav.h $(SRC_DIR)/wav.c | $(BUILD)
 	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_wav.c $(SRC_DIR)/wav.c -lm
@@ -104,6 +104,8 @@ $(BUILD)/win_params.o:  $(SRC_DIR)/params.c  | $(BUILD)
 $(BUILD)/win_wav.o:     $(SRC_DIR)/wav.c     | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
 $(BUILD)/win_tuner.o:   $(SRC_DIR)/tuner.c   | $(BUILD)
+	$(CC) $(WIN_CFLAGS) -c $< -o $@
+$(BUILD)/win_devtest.o: $(SRC_DIR)/devtest.c | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
 
 # Assembler dist/ (tdp.exe + portaudio.dll + README).
