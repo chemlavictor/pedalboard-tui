@@ -44,7 +44,7 @@ static float rms_to_db(float rms) {
   return db < -60.0f ? -60.0f : db;
 }
 
-/* Construit une jauge de `cells` cases (blocs Unicode pour Windows, ASCII ncurses). */
+/* Construit une jauge de `cells` cases. fill/empty : 1 octet (ASCII) ou 2 (UTF-8). */
 static void gauge_str(char *buf, int cells, float frac, const char *fill, const char *empty) {
   if (frac < 0.0f) frac = 0.0f;
   if (frac > 1.0f) frac = 1.0f;
@@ -53,8 +53,9 @@ static void gauge_str(char *buf, int cells, float frac, const char *fill, const 
   buf[0] = '[';
   for (int i = 0; i < cells; ++i) {
     const char *s = (i < filled) ? fill : empty;
-    memcpy(buf + p, s, 2); /* caractères UTF-8 (2 octets) */
-    p += 2;
+    int n = (s[1] != 0) ? 2 : 1;
+    memcpy(buf + p, s, n);
+    p += n;
   }
   buf[p] = ']'; buf[p + 1] = '\0';
 }
@@ -81,7 +82,7 @@ static void render(void) {
   ui_color(UI_COLOR_SELECTED, sel == SEL_GAIN);
   ui_text(2, 0, sel == SEL_GAIN ? "> " : "  ");
   ui_text(2, 2, "Gain   ");
-  gauge_str(gbuf, 12, gain, "\xE2\x96\x88", "\xE2\x96\x91"); /* █ ░ */
+  gauge_str(gbuf, 12, gain, "=", "-");
   ui_text(2, 10, gbuf);
   char pct[32]; snprintf(pct, sizeof pct, " %3.0f%%", gain * 100.0f);
   ui_text(2, 37, pct);
@@ -90,7 +91,7 @@ static void render(void) {
   ui_color(UI_COLOR_SELECTED, sel == SEL_MASTER);
   ui_text(3, 0, sel == SEL_MASTER ? "> " : "  ");
   ui_text(3, 2, "Master ");
-  gauge_str(gbuf, 12, master, "\xE2\x96\x88", "\xE2\x96\x91");
+  gauge_str(gbuf, 12, master, "=", "-");
   ui_text(3, 10, gbuf);
   snprintf(pct, sizeof pct, " %3.0f%%", master * 100.0f);
   ui_text(3, 37, pct);
@@ -100,44 +101,19 @@ static void render(void) {
   float in_rms = af_load(&P.vu_in_rms), in_peak = af_load(&P.vu_in_peak);
   float out_rms = af_load(&P.vu_out_rms), out_peak = af_load(&P.vu_out_peak);
 
-  /* INPUT */
-  ui_text(5, 0, "INPUT   ");
-  {
-    const int cells = 20;
-    int filled = (int)((in_rms <= 0 ? 0 : in_rms > 1 ? 1 : in_rms) * cells + 0.5f);
-    int pi = (int)((in_peak <= 0 ? 0 : in_peak > 1 ? 1 : in_peak) * cells + 0.5f);
-    if (pi > cells - 1) pi = cells - 1;
-    char buf[64]; int p = 1; buf[0] = '[';
-    for (int i = 0; i < cells; ++i) {
-      const char *s = (i == pi) ? "\xE2\x96\x93" : (i < filled ? "\xE2\x96\x88" : "\xE2\x96\x91"); /* ▓ █ ░ */
-      memcpy(buf + p, s, 2); p += 2;
-    }
-    buf[p] = ']'; buf[p+1] = 0;
-    ui_text(5, 8, buf);
-    char db[48]; snprintf(db, sizeof db, "%6.1f dB  peak", rms_to_db(in_rms));
-    ui_text(5, 52, db);
-  }
-  /* OUTPUT */
-  ui_text(6, 0, "OUTPUT  ");
-  {
-    const int cells = 20;
-    int filled = (int)((out_rms <= 0 ? 0 : out_rms > 1 ? 1 : out_rms) * cells + 0.5f);
-    int pi = (int)((out_peak <= 0 ? 0 : out_peak > 1 ? 1 : out_peak) * cells + 0.5f);
-    if (pi > cells - 1) pi = cells - 1;
-    char buf[64]; int p = 1; buf[0] = '[';
-    for (int i = 0; i < cells; ++i) {
-      const char *s = (i == pi) ? "\xE2\x96\x93" : (i < filled ? "\xE2\x96\x88" : "\xE2\x96\x91");
-      memcpy(buf + p, s, 2); p += 2;
-    }
-    buf[p] = ']'; buf[p+1] = 0;
-    ui_text(6, 8, buf);
-    char db[48]; snprintf(db, sizeof db, "%6.1f dB  peak", rms_to_db(out_rms));
-    ui_text(6, 52, db);
-  }
+  /* Jauge VU de 20 cases : '#' niveau, '*' peak-hold, '-' vide. */
+  char vub[64];
+  { const int c=20; int f=(int)((in_rms<=0?0:in_rms>1?1:in_rms)*c+0.5); int p=(int)((in_peak<=0?0:in_peak>1?1:in_peak)*c+0.5); if(p>c-1)p=c-1; vub[0]='['; int q=1; for(int i=0;i<c;++i){vub[q++]=(i==p)?'*':(i<f)?'#':'-';} vub[q]=']'; vub[q+1]=0; }
+  ui_text(5, 0, "INPUT   "); ui_text(5, 8, vub);
+  { char db[48]; snprintf(db, sizeof db, "%6.1f dB  peak", rms_to_db(in_rms)); ui_text(5, 30, db); }
+
+  { const int c=20; int f=(int)((out_rms<=0?0:out_rms>1?1:out_rms)*c+0.5); int p=(int)((out_peak<=0?0:out_peak>1?1:out_peak)*c+0.5); if(p>c-1)p=c-1; vub[0]='['; int q=1; for(int i=0;i<c;++i){vub[q++]=(i==p)?'*':(i<f)?'#':'-';} vub[q]=']'; vub[q+1]=0; }
+  ui_text(6, 0, "OUTPUT  "); ui_text(6, 8, vub);
+  { char db[48]; snprintf(db, sizeof db, "%6.1f dB  peak", rms_to_db(out_rms)); ui_text(6, 30, db); }
 
   /* Pied de page (FR-028) */
   char foot[128];
-  snprintf(foot, sizeof foot, "%ld Hz \xC2\xB7 buffer %ld \xC2\xB7 PortAudio %s",
+  snprintf(foot, sizeof foot, "%ld Hz - buffer %ld - PortAudio %s",
            sr, fb, pa_ok ? "OK" : "ERREUR");
   ui_text(ui_lines() - 1, 0, foot);
 
