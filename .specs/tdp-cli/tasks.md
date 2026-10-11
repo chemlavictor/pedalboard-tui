@@ -54,9 +54,9 @@ Design: .specs/tdp-cli/design.md
   - Files: src/shell.c, src/main.c
   - Steps:
     - `src/shell.c` : boucle `fgets` (stdin ou `FILE*` script), dispatch.
-    - `help`, `quit`/`exit`, boucle principale.
+    - `help` (vue d'ensemble : intro, commandes, exemple, pédales depuis `pedals_all()`), `quit`/`exit`, boucle principale.
     - `main.c` : appeler le shell (remplacer la boucle TUI).
-  - Validation: `./tdp` → `tdp> ` ; `help` liste ; `quit` sort.
+  - Validation: `./tdp` → `tdp> ` ; `help` affiche la vue d'ensemble ; `quit` sort.
 
 - [ ] 2.2 Parser .tdp + commande load
   - ID: T-005

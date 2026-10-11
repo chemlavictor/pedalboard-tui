@@ -114,7 +114,7 @@ TDP CLI est une application C11 à deux threads qui remplace le TUI par un **she
 | `info` | `nom` | Détails d'une pédale (params, min/max/défaut) | FR-007 |
 | `chain` | — | Afficher la chaîne chargée (ordre + params) | FR-009 |
 | `reset` | — | Reset les params de la chaîne aux défauts | FR-009 |
-| `help` | — | Liste des commandes | FR-009 |
+| `help` | — | Vue d'ensemble : intro, commandes, exemple, pédales | FR-009 |
 | `quit` / `exit` | — | Quitter proprement (stop audio) | FR-009 |
 
 ## Data Flow
@@ -151,8 +151,53 @@ TDP CLI est une application C11 à deux threads qui remplace le TUI par un **she
 - **Manuel (carte son)** : `make run` → `in`/`out`/`load`/`start`/`record`+Enter/`status`/`watch`/`quit`. Vérifier le WAV produit (durée, contenu).
 - **Script** : un `script.txt` (load, start, record, vide, stop, quit) exécuté en non-interactif → termine proprement, produit le WAV.
 
-## Requirements Traceability
+## Commande `help` (vue d'ensemble)
 
+La commande `help` affiche une vue d'ensemble complète (pas juste une liste) :
+
+```
+TDP — Terminal Distortion Pedal (CLI)
+Chaine de pedales audio temps reel, pilotee par commandes.
+
+Commandes :
+  in [N]        Listes les entrees / choisit l'entree N
+  out [N]       Listes les sorties / choisit la sortie N
+  load <fichier> Charge une chaine de pedales (.tdp)
+  chain         Affiche la chaine chargee
+  start         Demarre le flux audio (pedales appliquees)
+  stop          Arrete le flux audio
+  record        Enregistre le signal (post-pedales)
+  <Entree>      Arrete l'enregistrement + sauvegarde WAV horodate
+  status        Snapshot du niveau (RMS/peak in/out, etat)
+  watch         Affichage continu du niveau (on/off)
+  pedals        Liste les pedales disponibles
+  info <nom>    Details d'une pedale (params, min/max/defaut)
+  reset         Reset les params de la chaine aux defauts
+  help          Cette aide
+  quit          Quitter
+
+Pedales (V1) :
+  booster      Gain lineaire propre (level)
+  distortion   Distorsion tanh (gain)
+  noise_gate   Coupe le bruit de fond (threshold)
+  volume       Master volume de sortie (level)
+  mute         Silenced total
+
+Exemple :
+  tdp> in
+  tdp> out
+  tdp> load guitar.tdp
+  tdp> start
+  tdp> record
+  ... (jouer) ...
+  tdp>            <Entree> -> sauvegarde recordings/2026-07-09_15-42-33.wav
+  tdp> stop
+  tdp> quit
+```
+
+Le contenu est généré depuis le catalogue (`pedals_all()`) pour la liste des pédales, donc il reste à jour si on ajoute une pédale.
+
+## Requirements Traceability
 | Requirement | Design Coverage |
 |-------------|-----------------|
 | FR-001 | Component 1 (shell.c) : boucle fgets interactif/script, dispatch |

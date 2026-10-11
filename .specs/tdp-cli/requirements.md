@@ -158,7 +158,12 @@ La CLI SHALL afficher un snapshot du niveau du signal (`status` : RMS/peak en dB
 - **THEN** une ligne de niveau se met à jour périodiquement jusqu'à `watch` (off).
 
 ### FR-009: Commandes utilitaires
-La CLI SHALL fournir : `help` (liste des commandes), `quit`/`exit` (quitter proprement), `reset` (reset params aux défauts), `chain` (afficher la chaîne chargée).
+La CLI SHALL fournir : `help` (une vue d'ensemble : intro, liste des commandes avec description, un exemple de session, et la liste des pédales), `quit`/`exit` (quitter proprement), `reset` (reset params aux défauts), `chain` (afficher la chaîne chargée).
+
+#### Scenario: Help donne une vue d'ensemble
+- **GIVEN** le programme est démarré
+- **WHEN** l'utilisateur tape `help`
+- **THEN** il voit : une phrase d'intro, la liste des commandes (une par ligne, avec description courte), un exemple de session (load → start → record → quit), et la liste des pédales disponibles.
 
 ### FR-010: Portabilité Windows + Linux
 La CLI SHALL être compilable et fonctionnelle sur Windows (MinGW/MSYS2, `make dist` → `tdp.exe` + `portaudio.dll`) et Linux (`make`), avec le même code source.
