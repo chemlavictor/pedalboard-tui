@@ -81,6 +81,7 @@ static void shell_raw_off(void) {
 #include "wav.h"
 #include "tuner.h"
 #include "devtest.h"
+#include "in_test.h"
 
 #define LINE_MAX 512
 
@@ -112,6 +113,7 @@ static int cmd_status(int argc, char **argv);
 static int cmd_watch(int argc, char **argv);
 static int cmd_test(int argc, char **argv);
 static int cmd_test_out(int argc, char **argv);
+static int cmd_test_in(int argc, char **argv);
 
 /* Table de dispatch. Les commandes audio (in/out/start/stop/record/load...)
  * seront branchées dans les phases suivantes (audio.c / wav.c). */
@@ -136,6 +138,7 @@ static struct { const char *name; cmd_fn fn; } g_cmds[] = {
   { "watch",  cmd_watch },
   { "test",   cmd_test },    /* accordeur */
   { "test_out", cmd_test_out }, /* test des sorties audio */
+  { "test_in",  cmd_test_in },  /* test de l'entree audio (volume 0-100%) */
 };
 static const int N_CMDS = (int)(sizeof g_cmds / sizeof g_cmds[0]);
 
@@ -163,6 +166,7 @@ static int cmd_help(int argc, char **argv) {
     "  test          Accordeur : note + cents en continu ('q'/Entree = arreter, Ctrl+C = quitter)\n"
     "  test_out      Test des sorties : joue un bip sur chaque device (pour identifier le bon)\n"
     "  test_out <API> Test des sorties filtre par API (ex: test_out WASAPI)\n"
+    "  test_in       Test de l'entree : affiche le volume percu (0-100%%) pendant 5 s\n"
     "  watch           Affichage continu du niveau (on/off)\n"
     "  pedals          Liste les pedales disponibles\n"
     "  info <nom>      Details d'une pedale (params, min/max/defaut)\n"
@@ -575,6 +579,13 @@ static int cmd_test_out(int argc, char **argv) {
   return 0;
 }
 
+/* Test de l'entree : affiche le volume percu (0-100%) pendant 5 s. */
+static int cmd_test_in(int argc, char **argv) {
+  (void)argc; (void)argv;
+  in_test_run();
+  return 0;
+}
+
 /* Stoppe l'enregistrement (si actif) + sauvegarde le WAV horodate.
  * Appelle quand l'utilisateur tape <Entree> (ligne vide). */
 static void record_stop_and_save(void) {
@@ -774,11 +785,23 @@ static void hist_save(void) {
   fclose(f);
 }
 
-/* Lit une ligne avec auto-completion + historique. Retourne :
+/* Lit une ligne avec auto-completion + historique + curseur. Retourne :
  *  0 = ok (ligne validee), -1 = EOF, -2 = Ctrl+C (quit). */
 static int readline_tdp(char *buf, int bufsz) {
   int len = 0;
+  int cursor = 0; /* position du curseur (0..len) */
   buf[0] = '\0';
+
+  /* Re-affiche la ligne avec le curseur a la position 'cursor'. */
+  #define REDRAW() do { \
+    printf("\r"); \
+    for (int _i = 0; _i < len + 15; ++_i) printf(" "); \
+    printf("\rtdp> %.*s", len, buf); \
+    /* Deplace le curseur a 'cursor' en faisant marche arriere. */ \
+    for (int _i = len - 1; _i >= cursor; --_i) printf("\b"); \
+    fflush(stdout); \
+  } while (0)
+
   for (;;) {
     int c = tdp_getch();
     if (c == EOF) return -1;
@@ -792,7 +815,6 @@ static int readline_tdp(char *buf, int bufsz) {
 #else
       printf("\033[2J\033[H"); /* ANSI : efface + retour en haut a gauche */
 #endif
-      /* Re-affiche le prompt + la ligne courante. */
       printf("tdp> %.*s", len, buf);
       fflush(stdout);
       continue;
@@ -804,13 +826,38 @@ static int readline_tdp(char *buf, int bufsz) {
       g_hist_pos = -1;
       return 0;
     }
-    if (c == 127 || c == 8) { /* Backspace */
-      if (len > 0) {
+    if (c == 127 || c == 8) { /* Backspace : efface avant le curseur */
+      if (cursor > 0) {
+        /* Supprime le caractere a (cursor-1). */
+        memmove(&buf[cursor - 1], &buf[cursor], (size_t)(len - cursor) + 1);
         --len;
-        buf[len] = '\0';
-        printf("\b \b");
-        fflush(stdout);
+        --cursor;
+        REDRAW();
       }
+      continue;
+    }
+    if (c == 203 || c == 27) { /* Fleche gauche (Windows=203, Linux=27 seq) */
+      if (c == 27) { /* Linux : lit la sequence [ D */
+        int c1 = tdp_getch(), c2 = tdp_getch();
+        (void)c1;
+        if (c2 != 'D') continue; /* pas une fleche gauche */
+      }
+      if (cursor > 0) {
+        --cursor;
+        REDRAW();
+      }
+      continue;
+    }
+    if (c == 204) { /* Fleche droite (Windows=204) */
+      if (cursor < len) {
+        ++cursor;
+        REDRAW();
+      }
+      continue;
+    }
+    if (c == 27) { /* ESC : fleches Linux (haut/bas deja gerees, ici on ne fait rien) */
+      int c1 = tdp_getch(), c2 = tdp_getch();
+      (void)c1; (void)c2;
       continue;
     }
     if (c == 200 || c == 72) { /* Fleche haut (Windows _getch=200, Linux=27 seq) */
