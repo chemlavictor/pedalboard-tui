@@ -11,13 +11,18 @@
 #include <sys/types.h>
 
 #include "pedals.h"
+#include "audio.h"
+#include "wav.h"
 
 #define LINE_MAX 512
 
-/* Chaine de pedales chargee (memoire statique, partagee avec le thread audio
- * en phase 3). Pour l'instant, elle est construite par `load` et affichee par
- * `chain`. */
+/* Chaine de pedales chargee (construite par `load`). */
 static chain_t g_chain = {0};
+
+/* Etat audio partagé + ring buffer d'enregistrement (statiques, RT-safe). */
+static audio_shared g_sh;
+static rec_ring g_ring;
+static float g_rec_buf[TDP_REC_CAPACITY]; /* ~60 s mono 48 kHz */
 
 /* Handlers des commandes (implémentés plus bas ou dans d'autres modules).
  * Retourne -1 pour demander la sortie du shell. */
@@ -30,6 +35,11 @@ static int cmd_info(int argc, char **argv);
 static int cmd_load(int argc, char **argv);
 static int cmd_chain(int argc, char **argv);
 static int cmd_reset(int argc, char **argv);
+static int cmd_in(int argc, char **argv);
+static int cmd_out(int argc, char **argv);
+static int cmd_start(int argc, char **argv);
+static int cmd_stop(int argc, char **argv);
+static int cmd_record(int argc, char **argv);
 static int cmd_noop(int argc, char **argv);
 
 /* Table de dispatch. Les commandes audio (in/out/start/stop/record/load...)
@@ -43,12 +53,12 @@ static struct { const char *name; cmd_fn fn; } g_cmds[] = {
   { "load",   cmd_load },
   { "chain",  cmd_chain },
   { "reset",  cmd_reset },
-  /* placeholders (implémentés en phase 3) : */
-  { "in",     cmd_noop },
-  { "out",    cmd_noop },
-  { "start",  cmd_noop },
-  { "stop",   cmd_noop },
-  { "record", cmd_noop },
+  { "in",     cmd_in },
+  { "out",    cmd_out },
+  { "start",  cmd_start },
+  { "stop",   cmd_stop },
+  { "record", cmd_record },
+  /* placeholders (implémentés en phase 4) : */
   { "status", cmd_noop },
   { "watch",  cmd_noop },
 };
@@ -278,8 +288,131 @@ static int cmd_reset(int argc, char **argv) {
   return 0;
 }
 
+/* ------------------------------------------------------------------ */
+/* in / out / start / stop (audio)                                     */
+/* ------------------------------------------------------------------ */
+
+static int g_in_dev = -1;  /* -1 = defaut */
+static int g_out_dev = -1;
+
+static int cmd_in(int argc, char **argv) {
+  if (argc >= 2) {
+    g_in_dev = atoi(argv[1]);
+    printf("TDP: entree %d selectionnee\n", g_in_dev);
+    return 0;
+  }
+  /* Listage. */
+  tdp_device devs[TDP_MAX_DEVICES];
+  int n = audio_list_devices(devs);
+  if (n == 0) { printf("(aucune entree detectee)\n"); return 0; }
+  printf("Entrees audio :\n");
+  for (int i = 0; i < n; ++i) {
+    if (!devs[i].is_input) continue;
+    const char *mark = (devs[i].id == g_in_dev) ? "> " : "  ";
+    printf("%s[%d] %s\n", mark, devs[i].id, devs[i].name);
+  }
+  return 0;
+}
+
+static int cmd_out(int argc, char **argv) {
+  if (argc >= 2) {
+    g_out_dev = atoi(argv[1]);
+    printf("TDP: sortie %d selectionnee\n", g_out_dev);
+    return 0;
+  }
+  tdp_device devs[TDP_MAX_DEVICES];
+  int n = audio_list_devices(devs);
+  if (n == 0) { printf("(aucune sortie detectee)\n"); return 0; }
+  printf("Sorties audio :\n");
+  for (int i = 0; i < n; ++i) {
+    if (!devs[i].is_output) continue;
+    const char *mark = (devs[i].id == g_out_dev) ? "> " : "  ";
+    printf("%s[%d] %s\n", mark, devs[i].id, devs[i].name);
+  }
+  return 0;
+}
+
+static int cmd_start(int argc, char **argv) {
+  (void)argc; (void)argv;
+  if (atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
+    printf("TDP: deja en cours (stop d'abord)\n");
+    return 0;
+  }
+  /* Active la chaine chargee dans l'audio. */
+  audio_set_chain(&g_chain);
+  if (!audio_start(g_in_dev, g_out_dev)) {
+    printf("TDP: audio indisponible (portaudio.dll introuvable ? ou aucune carte?)\n");
+    return 0;
+  }
+  printf("TDP: flux demarre (entree %d, sortie %d)\n", g_in_dev, g_out_dev);
+  return 0;
+}
+
+static int cmd_stop(int argc, char **argv) {
+  (void)argc; (void)argv;
+  audio_stop();
+  printf("TDP: flux arrete\n");
+  return 0;
+}
+
+/* Record : demarre l'enregistrement (post-pedales). */
+static int cmd_record(int argc, char **argv) {
+  (void)argc; (void)argv;
+  if (!atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
+    printf("TDP: rien a enregistrer (flux non demarre)\n");
+    return 0;
+  }
+  if (atomic_load_explicit(&g_sh.recording, memory_order_relaxed)) {
+    printf("TDP: deja en train d'enregistrer\n");
+    return 0;
+  }
+  audio_rec_reset();
+  atomic_store_explicit(&g_sh.recording, true, memory_order_relaxed);
+  printf("TDP: enregistrement demarre (tapez <Entree> pour stopper + sauvegarder)\n");
+  return 0;
+}
+
+/* Stoppe l'enregistrement (si actif) + sauvegarde le WAV horodate.
+ * Appelle quand l'utilisateur tape <Entree> (ligne vide). */
+static void record_stop_and_save(void) {
+  if (!atomic_load_explicit(&g_sh.recording, memory_order_relaxed)) return;
+  atomic_store_explicit(&g_sh.recording, false, memory_order_relaxed);
+
+  /* Lit le ring buffer (head = position actuelle, count = nb ecrits). */
+  unsigned head = audio_rec_head();
+  unsigned long long count = atomic_load_explicit(&g_ring.count, memory_order_relaxed);
+  unsigned cap = TDP_REC_CAPACITY;
+  unsigned long n = (count > cap) ? cap : (unsigned long)count;
+
+  /* Reconstitue le signal dans l'ordre (du plus ancien au plus recent).
+   * Le ring ecrit en head ; les derniers n echantillons sont les plus recents.
+   * On part de (head - n) % cap et on lit n echantillons. */
+  static float tmp[TDP_REC_CAPACITY]; /* tampon statique pour la sauvegarde */
+  unsigned start = (head > n) ? (head - n) : (head + cap - n);
+  for (unsigned long i = 0; i < n; ++i) {
+    tmp[i] = g_ring.buf[(start + i) % cap];
+  }
+
+  char path[512];
+  if (wav_timestamped_name(path, sizeof path) != 0) {
+    printf("TDP: impossible de generer le nom du fichier\n");
+    return;
+  }
+  double sr = 48000.0; /* TODO: utiliser le sr reel (a ajouter dans audio.h) */
+  if (wav_write(path, tmp, (long)n, sr) == 0) {
+    double dur = (double)n / sr;
+    printf("TDP: enregistrement sauvegarde : %s (%.1f s)\n", path, dur);
+  } else {
+    printf("TDP: echec de l'ecriture de %s\n", path);
+  }
+  audio_rec_reset();
+}
+
 /* Flag de sortie (set par cmd_quit via exec_line). */
 int shell_quit_flag = 0;
+
+/* Forward : stoppe l'enregistrement + sauvegarde (definie plus bas). */
+static void record_stop_and_save(void);
 
 /* ------------------------------------------------------------------ */
 /* Boucle principale                                                   */
@@ -290,9 +423,11 @@ static void exec_line(char *line, int interactive) {
   /* Ignore les espaces de depart. */
   char *s = line;
   while (*s == ' ' || *s == '\t') ++s;
-  /* Ligne vide : dans le mode interactif, si record actif -> stopper (phase 3).
-   * Pour l'instant : ignore. */
-  if (*s == '\0') return;
+  /* Ligne vide : si record actif -> stopper + sauvegarder le WAV. */
+  if (*s == '\0') {
+    record_stop_and_save();
+    return;
+  }
   /* Ignore les commentaires (#). */
   if (*s == '#') return;
 
@@ -327,6 +462,9 @@ static void exec_line(char *line, int interactive) {
 /* Point d'entrée du shell.
  * script_path : NULL = interactif, sinon lecture du fichier. */
 void shell_run(const char *script_path) {
+  /* Initialise l'etat audio partage (avant tout start). */
+  audio_init(&g_sh, &g_ring, g_rec_buf);
+
   FILE *f = NULL;
   int interactive = (script_path == NULL);
   if (!interactive) {
@@ -352,6 +490,9 @@ void shell_run(const char *script_path) {
     }
     exec_line(line, interactive);
   }
+
+  /* Arrete le flux au quit (si en cours). */
+  audio_stop();
 
   if (f) fclose(f);
   if (interactive) printf("\nTDP: au revoir.\n");

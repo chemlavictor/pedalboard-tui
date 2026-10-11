@@ -80,7 +80,7 @@ Design: .specs/tdp-cli/design.md
     - Fichiers de test temporaires (créés/nettoyés).
   - Validation: `make test` passe.
 
-- [ ] 3.1 Adapter audio.c pour la chaîne + sélection device
+- [x] 3.1 Adapter audio.c pour la chaîne + sélection device
   - ID: T-007
   - Requirement(s): FR-002, FR-003
   - Design: Component 3 (audio.c)
@@ -91,7 +91,7 @@ Design: .specs/tdp-cli/design.md
     - VU (RMS/peak) in/out → atomiques. **RT-safe** : pas de malloc/I/O/locks.
   - Validation: compile ; `in`/`out` listent ; `start`/`stop`.
 
-- [ ] 3.2 Commandes in/out/start/stop dans le shell
+- [x] 3.2 Commandes in/out/start/stop dans le shell
   - ID: T-008
   - Requirement(s): FR-002, FR-003
   - Design: Commands
@@ -101,7 +101,7 @@ Design: .specs/tdp-cli/design.md
     - `start` sans in/out → devices par défaut. Aucune carte → message, pas de crash.
   - Validation: manuel (carte son) : in/out/start/stop ; EC-001 (pas de carte) géré.
 
-- [ ] 3.3 Enregistrement (ring buffer + record + WAV)
+- [x] 3.3 Enregistrement (ring buffer + record + WAV)
   - ID: T-009
   - Requirement(s): FR-006
   - Design: Component 3 + Component 4
@@ -113,7 +113,7 @@ Design: .specs/tdp-cli/design.md
     - `src/wav.c` : encodeur WAV PCM 16-bit mono. Nom horodaté ; créer `recordings/`.
   - Validation: `record`+Enter → WAV valide (en-tête + durée) ; EC-004 géré.
 
-- [ ] 3.4 Tests WAV + chaîne complète
+- [x] 3.4 Tests WAV + chaîne complète
   - ID: T-010
   - Requirement(s): FR-005, FR-006
   - Design: Testing Strategy

@@ -2,41 +2,62 @@
 #define TDP_AUDIO_H
 
 #include <stdbool.h>
+#include <stdatomic.h>
 
-/* Nombre max de périphériques listés (entrée + sortie). */
+#include "pedals.h"
+
+/* Nombre max de périphériques listés. */
 #define TDP_MAX_DEVICES 32
 #define TDP_DEVICE_NAME_LEN 64
 
-/* Info d'un périphérique audio. */
 typedef struct {
-  int id;                 /* index PortAudio */
+  int id;
   char name[TDP_DEVICE_NAME_LEN];
-  bool is_input;          /* true si peut servir d'entrée */
-  bool is_output;         /* true si peut servir de sortie */
+  bool is_input;
+  bool is_output;
 } tdp_device;
 
-/*
- * Ouvre le stream audio (mono in+out) et démarre le thread audio.
- * Demande 48000 Hz / 256 échantillons, fallback en cascade.
- * Retourne true si le stream est ouvert ; false en cas d'échec.
- */
-bool audio_start(void);
+/* Taille du ring buffer d'enregistrement (nb d'échantillons mono).
+ * ~60 s à 48 kHz. Mémoire statique (RT-safe, pas de malloc). */
+#define TDP_REC_CAPACITY 2880000
 
-/* Arrête et ferme le stream audio. Idempotent. */
+/* État partagé avec le thread audio (atomiques, lock-free). */
+typedef struct {
+  _Atomic bool running;    /* start/stop */
+  _Atomic bool recording;  /* record actif */
+  _Atomic float vu_in_rms;
+  _Atomic float vu_in_peak;
+  _Atomic float vu_out_rms;
+  _Atomic float vu_out_peak;
+  _Atomic bool pa_ok;
+} audio_shared;
+
+/* Ring buffer d'enregistrement (écrit par le RT, lu par le main). */
+typedef struct {
+  float *buf;        /* pointeur vers un tampon statique de TDP_REC_CAPACITY */
+  unsigned head;     /* position d'écriture (RT) */
+  _Atomic unsigned long long count; /* nb d'échantillons écrits */
+} rec_ring;
+
+/* Point d'entrée : initialise l'état partagé (appeler avant audio_start). */
+void audio_init(audio_shared *sh, rec_ring *ring, float *rec_buf);
+
+/* active la chaine a appliquer (le RT lit ce pointeur). */
+void audio_set_chain(const chain_t *c);
+
+/* Ouvre + démarre le stream (mono in+out). -1 = device par defaut.
+ * Retourne true si le stream est ouvert. */
+bool audio_start(int in_id, int out_id);
+
+/* Arrete + ferme le stream. Idempotent. */
 void audio_stop(void);
 
-/*
- * Remplie `out` avec la liste des périphériques PortAudio.
- * Retourne le nombre de périphériques trouvés (<= TDP_MAX_DEVICES).
- * L'app doit avoir appelé Pa_Initialize (fait par audio_start).
- */
+/* List les peripheriques. Retourne le nb (<= TDP_MAX_DEVICES). */
 int audio_list_devices(tdp_device *out);
 
-/*
- * Ré-ouvre le stream avec les périphériques choisis.
- * `in_id` / `out_id` : index PortAudio (ou -1 pour défaut).
- * Retourne true si le stream est ré-ouvert ; false sinon.
- */
-bool audio_set_devices(int in_id, int out_id);
+/* Lit la position d'écriture du ring (pour stopper l'enregistrement). */
+unsigned audio_rec_head(void);
+/* Reset le ring (apres sauvegarde). */
+void audio_rec_reset(void);
 
 #endif /* TDP_AUDIO_H */
