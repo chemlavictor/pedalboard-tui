@@ -574,6 +574,10 @@ static int cmd_test(int argc, char **argv) {
     printf("\nTDP: accordeur ARRETE\n");
     return 0;
   }
+  if (g_in_dev < 0) {
+    printf("TDP: selectionne d'abord l'entree (in <numero>) pour l'accordeur\n");
+    return 0;
+  }
   if (!atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
     printf("TDP: demarre le flux d'abord (start) pour utiliser l'accordeur\n");
     return 0;
