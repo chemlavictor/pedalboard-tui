@@ -1,4 +1,5 @@
 #include "dsp.h"
+#include "pedals.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,6 +100,112 @@ int main(void) {
     for (int k = 0; k < 100; ++k)
       dsp_process(small, small, block, 1.0f, 1.0f, false, false, sr, &vu);
     CHECK(vu.in_peak < 0.05f, "peak-hold retombe après la fenêtre");
+  }
+
+  /* 7) Catalogue : chaque pedale du catalogue est trouvee (FR-007) */
+  {
+    const pedal_def *all = pedals_all();
+    int n = pedals_count();
+    CHECK(n == 5, "catalogue contient 5 pedales");
+    int found = 0;
+    for (int i = 0; all[i].name; ++i) {
+      const pedal_def *d = pedal_find(all[i].name);
+      if (d && d == &all[i]) ++found;
+    }
+    CHECK(found == n, "chaque pedale du catalogue est trouvee par pedal_find");
+    CHECK(pedal_find("distortion") != NULL, "pedal_find('distortion') != NULL");
+    CHECK(pedal_find("booster") != NULL, "pedal_find('booster') != NULL");
+    CHECK(pedal_find("noise_gate") != NULL, "pedal_find('noise_gate') != NULL");
+    CHECK(pedal_find("volume") != NULL, "pedal_find('volume') != NULL");
+    CHECK(pedal_find("mute") != NULL, "pedal_find('mute') != NULL");
+    CHECK(pedal_find("inconnue") == NULL, "pedal_find('inconnue') == NULL");
+    CHECK(pedal_find(NULL) == NULL, "pedal_find(NULL) == NULL");
+  }
+
+  /* 8) Catalogue : params coerents (min<max, def dans [min,max]) (FR-007) */
+  {
+    const pedal_def *all = pedals_all();
+    int ok = 1;
+    for (int i = 0; all[i].name; ++i) {
+      for (const pedal_param *p = all[i].params; p && p->name; ++p) {
+        if (!(p->minv <= p->def && p->def <= p->maxv)) ok = 0;
+        if (!(p->minv <= p->maxv)) ok = 0;
+      }
+    }
+    CHECK(ok, "tous les params : min<=def<=max");
+  }
+
+  /* 9) DSP booster : x *= level (FR-005) */
+  {
+    const pedal_def *d = pedal_find("booster");
+    pedal_state st = {0}; st.v[0] = 2.0f; /* level=2 */
+    float buf[3] = {0.25f, -0.5f, 1.0f};
+    d->process(buf, 3, &st);
+    CHECK(fabsf(buf[0] - 0.5f) < 1e-6f, "booster level=2 : 0.25 -> 0.5");
+    CHECK(fabsf(buf[1] + 1.0f) < 1e-6f, "booster level=2 : -0.5 -> -1.0");
+    CHECK(fabsf(buf[2] - 2.0f) < 1e-6f, "booster level=2 : 1.0 -> 2.0");
+  }
+
+  /* 10) DSP distortion : y = tanh(gain*x) (FR-005) */
+  {
+    const pedal_def *d = pedal_find("distortion");
+    pedal_state st = {0}; st.v[0] = 1.0f; /* gain=1 */
+    float buf[3] = {0.0f, 1.0f, -1.0f};
+    d->process(buf, 3, &st);
+    CHECK(fabsf(buf[0]) < 1e-6f, "distortion : tanh(0)=0");
+    CHECK(fabsf(buf[1] - tanhf(1.0f)) < 1e-6f, "distortion : tanh(1)");
+    CHECK(fabsf(buf[2] + tanhf(1.0f)) < 1e-6f, "distortion : tanh(-1)=-tanh(1)");
+  }
+
+  /* 11) DSP noise_gate : silence si RMS < seuil (FR-005) */
+  {
+    const pedal_def *d = pedal_find("noise_gate");
+    /* Seuil -45 dB -> ligne ~ 0.0056. */
+    pedal_state st = {0}; st.v[0] = -45.0f;
+    /* Signal faible (RMS bien en dessous du seuil) -> mute. */
+    float quiet[8] = {0.001f, -0.001f, 0.001f, -0.001f, 0.001f, -0.001f, 0.001f, -0.001f};
+    d->process(quiet, 8, &st);
+    int all_zero = 1; for (int i = 0; i < 8; ++i) if (quiet[i] != 0.0f) all_zero = 0;
+    CHECK(all_zero, "noise_gate : signal faible -> silence");
+    /* Signal fort (RMS au-dessus du seuil) -> passe. */
+    float loud[8]; for (int i = 0; i < 8; ++i) loud[i] = (i % 2 ? -0.5f : 0.5f);
+    float saved[8]; memcpy(saved, loud, sizeof loud);
+    d->process(loud, 8, &st);
+    CHECK(memcmp(loud, saved, sizeof loud) == 0, "noise_gate : signal fort -> passe");
+  }
+
+  /* 12) DSP volume : x *= level (FR-005) */
+  {
+    const pedal_def *d = pedal_find("volume");
+    pedal_state st = {0}; st.v[0] = 0.5f;
+    float buf[2] = {1.0f, -1.0f};
+    d->process(buf, 2, &st);
+    CHECK(fabsf(buf[0] - 0.5f) < 1e-6f, "volume level=0.5 : 1.0 -> 0.5");
+    CHECK(fabsf(buf[1] + 0.5f) < 1e-6f, "volume level=0.5 : -1.0 -> -0.5");
+  }
+
+  /* 13) DSP mute : out = 0 (FR-005) */
+  {
+    const pedal_def *d = pedal_find("mute");
+    pedal_state st = {0};
+    float buf[3] = {0.9f, -0.9f, 0.3f};
+    d->process(buf, 3, &st);
+    int all_zero = 1; for (int i = 0; i < 3; ++i) if (buf[i] != 0.0f) all_zero = 0;
+    CHECK(all_zero, "mute : out = 0");
+  }
+
+  /* 14) Chaine complete : booster -> distortion -> volume (FR-005) */
+  {
+    chain_t c = {0};
+    c.defs[0] = pedal_find("booster");    c.state[0].v[0] = 2.0f;
+    c.defs[1] = pedal_find("distortion"); c.state[1].v[0] = 1.0f;
+    c.defs[2] = pedal_find("volume");     c.state[2].v[0] = 0.5f;
+    c.len = 3;
+    float buf[1] = {0.5f};
+    chain_process(&c, buf, 1);
+    /* Attente : tanh(1.0 * (2.0*0.5)) * 0.5 = tanh(1.0)*0.5 */
+    float expected = tanhf(1.0f) * 0.5f;
+    CHECK(fabsf(buf[0] - expected) < 1e-5f, "chaine booster->distortion->volume correcte");
   }
 
   printf("\n%s (%d échec%s)\n", failures ? "TESTS ÉCHEUÉS" : "TOUS LES TESTS PASSENT",

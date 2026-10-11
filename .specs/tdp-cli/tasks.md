@@ -1,6 +1,6 @@
 # Tasks: TDP CLI — shell de commandes
 
-Status: tasks-draft
+Status: implementation-in-progress
 Date: 2026-07-09
 Spec: .specs/tdp-cli
 Requirements: .specs/tdp-cli/requirements.md
@@ -16,7 +16,7 @@ Design: .specs/tdp-cli/design.md
 
 ## Tasks
 
-- [ ] 1.1 Structure du catalogue + lookup
+- [x] 1.1 Structure du catalogue + lookup
   - ID: T-001
   - Requirement(s): FR-007
   - Design: Component 2 (pedals.h)
@@ -26,7 +26,7 @@ Design: .specs/tdp-cli/design.md
     - Créer `src/pedals.c` : tableau `const pedal_def` (5 pédales), `pedal_find(name)`.
   - Validation: compile ; `pedal_find("distortion")` → bonne def ; `pedal_find("nope")` → NULL.
 
-- [ ] 1.2 Fonctions DSP des 5 pédales
+- [x] 1.2 Fonctions DSP des 5 pédales
   - ID: T-002
   - Requirement(s): FR-005
   - Design: Component 2 (fonctions DSP)
@@ -36,7 +36,7 @@ Design: .specs/tdp-cli/design.md
     - `noise_gate` : RMS du buffer, si < threshold (linéaire depuis dB) → zéro tout.
   - Validation: unit tests sur buffers synthétiques (chaque pédale).
 
-- [ ] 1.3 Tests unitaires catalogue + DSP
+- [x] 1.3 Tests unitaires catalogue + DSP
   - ID: T-003
   - Requirement(s): FR-005, FR-007
   - Design: Testing Strategy

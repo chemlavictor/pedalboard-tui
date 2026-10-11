@@ -51,8 +51,8 @@ run: $(TARGET)
 test: $(TEST)
 	./$(TEST)
 
-$(TEST): tests/test_dsp.c $(INC_DIR)/dsp.h $(SRC_DIR)/dsp.c | $(BUILD)
-	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_dsp.c $(SRC_DIR)/dsp.c -lm
+$(TEST): tests/test_dsp.c $(INC_DIR)/dsp.h $(INC_DIR)/pedals.h $(SRC_DIR)/dsp.c $(SRC_DIR)/pedals.c | $(BUILD)
+	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_dsp.c $(SRC_DIR)/dsp.c $(SRC_DIR)/pedals.c -lm
 
 # Vérification mémoire (Valgrind). Exige `valgrind` installé.
 check: test
