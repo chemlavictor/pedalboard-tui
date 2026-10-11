@@ -1,0 +1,23 @@
+# Artefacts de build
+build/
+*.o
+*.d
+*.a
+
+# Binaire
+tdp
+test_dsp
+
+# Valgrind
+*.vgcore
+valgrind*.log
+
+# Éditeur / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Local pi / agents
+.pi/

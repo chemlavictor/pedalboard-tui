@@ -1,0 +1,25 @@
+# .specs/config.yaml — project-wide spec workflow config (free-form, agent-interpreted)
+#
+# This file is read at the start of every spec workflow action (brainstorm,
+# spec init, status, validate, task check, implementation). Edits take effect
+# on the next action. The schema is intentionally free-form: any keys you add
+# are surfaced to the spec agent as project context.
+
+project:
+  goal: "Short statement of what this project is for."
+  tech_stack:
+    - "language/runtime"
+    - "framework"
+    - "datastore"
+
+principles:
+  tdd: false # write tests first when true
+  no_comments: false # omit code comments when true
+  # add any other principles your team wants the agent to honor
+
+hooks:
+  after_task:
+    - command: "npm test"
+      auto: false # true = agent runs it after each task; false = remind the user
+    # - command: "npm run lint"
+    #   auto: true
