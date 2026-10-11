@@ -12,15 +12,30 @@
       color: #0f0;
       padding: 20px;
     }
-    h1 {
-      color: #0f0;
-      margin-bottom: 10px;
-      font-size: 1.5em;
-    }
-    .subtitle {
-      color: #888;
-      margin-bottom: 20px;
+    h1 { color: #0f0; margin-bottom: 10px; font-size: 1.5em; }
+    .subtitle { color: #888; margin-bottom: 15px; font-size: 0.9em; }
+    #vu {
+      background: #000;
+      border: 1px solid #0f0;
+      padding: 10px;
+      margin-bottom: 15px;
       font-size: 0.9em;
+      min-height: 40px;
+    }
+    .vu-bar {
+      display: inline-block;
+      width: 200px;
+      height: 16px;
+      background: #222;
+      border: 1px solid #0f0;
+      vertical-align: middle;
+      margin: 0 8px;
+    }
+    .vu-fill {
+      height: 100%;
+      background: #0f0;
+      width: 0%;
+      transition: width 0.1s;
     }
     #output {
       background: #000;
@@ -32,15 +47,8 @@
       font-size: 0.9em;
       margin-bottom: 15px;
     }
-    .input-row {
-      display: flex;
-      align-items: center;
-    }
-    .prompt {
-      color: #0f0;
-      font-weight: bold;
-      margin-right: 5px;
-    }
+    .input-row { display: flex; align-items: center; }
+    .prompt { color: #0f0; font-weight: bold; margin-right: 5px; }
     #cmd {
       flex: 1;
       background: #000;
@@ -50,34 +58,27 @@
       font-family: inherit;
       font-size: 1em;
     }
-    #cmd:focus {
-      outline: none;
-      border-color: #0f0;
-    }
-    .history {
-      margin-top: 15px;
-      color: #888;
-      font-size: 0.8em;
-    }
-    .history span {
-      color: #0f0;
-      cursor: pointer;
-      margin-right: 10px;
-    }
-    .history span:hover {
-      text-decoration: underline;
-    }
+    #cmd:focus { outline: none; border-color: #0f0; }
+    .history { margin-top: 15px; color: #888; font-size: 0.8em; }
+    .history span { color: #0f0; cursor: pointer; margin-right: 10px; }
+    .history span:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <h1>TDP — Terminal Distortion Pedal</h1>
-  <div class="subtitle">Shell web — exécute les commandes TDP via le navigateur</div>
+  <div class="subtitle">Shell web — VU temps réel + commandes</div>
 
-  <div id="output">TDP Web — tape une commande ci-dessous (ex: help, pedals, load son_metal.tdp)</div>
+  <div id="vu">
+    VU in : <span class="vu-bar"><span class="vu-fill" id="vu-in"></span></span> <span id="vu-in-val">0%</span>
+    &nbsp;&nbsp;
+    VU out : <span class="vu-bar"><span class="vu-fill" id="vu-out"></span></span> <span id="vu-out-val">0%</span>
+  </div>
+
+  <div id="output">TDP Web — tape une commande ci-dessous (ex: help, pedals, load son_metal.tdp, start)</div>
 
   <div class="input-row">
     <span class="prompt">tdp&gt;</span>
-    <input type="text" id="cmd" placeholder="tape une commande (ex: help)" autocomplete="off">
+    <input type="text" id="cmd" placeholder="tape une commande" autocomplete="off">
   </div>
 
   <div class="history" id="history"></div>
@@ -86,6 +87,10 @@
     const output = document.getElementById("output");
     const cmdInput = document.getElementById("cmd");
     const historyDiv = document.getElementById("history");
+    const vuIn = document.getElementById("vu-in");
+    const vuOut = document.getElementById("vu-out");
+    const vuInVal = document.getElementById("vu-in-val");
+    const vuOutVal = document.getElementById("vu-out-val");
     let history = [];
     let histIndex = -1;
 
@@ -97,14 +102,12 @@
     async function sendCmd(cmd) {
       if (!cmd) return;
       appendOutput("tdp> " + cmd);
-      // Ajoute à l'historique.
       if (history[history.length - 1] !== cmd) {
         history.push(cmd);
         if (history.length > 32) history.shift();
         renderHistory();
       }
       histIndex = -1;
-
       try {
         const resp = await fetch("/cmd", {
           method: "POST",
@@ -141,21 +144,51 @@
         e.preventDefault();
         if (histIndex !== -1) {
           if (histIndex < history.length - 1) histIndex++;
-          else {
-            histIndex = -1;
-            cmdInput.value = "";
-          }
+          else { histIndex = -1; cmdInput.value = ""; }
           if (histIndex !== -1) cmdInput.value = history[histIndex];
         }
       }
     });
 
-    // Vérifie que le serveur est en ligne.
+    /* Poll le VU (status) toutes les 500 ms. */
+    async function pollVU() {
+      try {
+        const resp = await fetch("/cmd", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cmd: "status" }),
+        });
+        const data = await resp.json();
+        // Parse la sortie (ex: "in : -12.3 dB  peak -8.1 dB").
+        // Simplifie : on extrait les nombres.
+        const text = data.output || "";
+        const inMatch = text.match(/in\s*:\s*([-\d.]+)/);
+        const outMatch = text.match(/out\s*:\s*([-\d.]+)/);
+        if (inMatch) {
+          // Converti dB en % (0 dB = 100%, -60 dB = 0%).
+          const db = parseFloat(inMatch[1]);
+          const pct = Math.max(0, Math.min(100, (db + 60) / 60 * 100));
+          vuIn.style.width = pct + "%";
+          vuInVal.textContent = Math.round(pct) + "%";
+        }
+        if (outMatch) {
+          const db = parseFloat(outMatch[1]);
+          const pct = Math.max(0, Math.min(100, (db + 60) / 60 * 100));
+          vuOut.style.width = pct + "%";
+          vuOutVal.textContent = Math.round(pct) + "%";
+        }
+      } catch (e) {
+        // Ignore les erreurs de poll.
+      }
+    }
+    setInterval(pollVU, 500);
+
+    // Verifie que le serveur est en ligne.
     fetch("/status")
       .then(r => r.json())
       .then(d => {
-        if (!d.exists) {
-          appendOutput("ATTENTION : binaire TDP introuvable (" + d.tdp_bin + "). Lance 'make' d'abord.");
+        if (!d.connected) {
+          appendOutput("ATTENTION : serveur TDP non connecte.");
         }
       })
       .catch(() => {
