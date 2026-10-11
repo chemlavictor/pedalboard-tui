@@ -167,7 +167,7 @@ static int cmd_help(int argc, char **argv) {
     "  start           Demarre le flux audio (pedales appliquees)\n"
     "  stop            Arrete le flux audio\n"
     "  record          Enregistre le signal (post-pedales)\n"
-    "  <Entree>        Arrete l'enregistrement + sauvegarde WAV horodate\n"
+    "  <Entree>        (si record actif) Arrete l'enregistrement + sauvegarde WAV horodate\n"
     "  status          Snapshot du niveau (RMS/peak in/out, etat)\n"
     "  s               (alias de status)\n"
     "  test          Accordeur : note + cents en continu ('q'/Entree = arreter, Ctrl+C = quitter)\n"
