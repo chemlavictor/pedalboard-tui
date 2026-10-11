@@ -1,0 +1,22 @@
+# Pedalboard : métal "Zombies" (Elena Siegman / Kevin Sherwood)
+#
+# Schéma de signal :
+#   Guitare (micro chevalet, volume à fond)
+#     -> Booster / TS9   : gain ~0, level à fond (pousse l'entree de l'ampli)
+#     -> Ampli High-Gain : canal sature/lead (simule par la distortion tanh)
+#     -> Noise Gate      : boucle d'effets, coupe le bruit (chugs nets)
+#     -> Volume          : master de sortie
+#
+# Ordre en serie (une pedale par ligne) :
+
+# 1. Booster / TS9 — level a fond pour pousser le signal, pas de gain de disto.
+booster level=2.0
+
+# 2. Ampli High-Gain — saturation agressive (type EVH 5150 / Mesa).
+distortion gain=0.6
+
+# 3. Noise Gate (FX Loop) — seuil strict pour des chugs nets, pas de souffle.
+noise_gate threshold=-40
+
+# 4. Volume master de sortie.
+volume level=0.8
