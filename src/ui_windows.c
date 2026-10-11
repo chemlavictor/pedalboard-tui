@@ -41,7 +41,7 @@ int ui_init(void) {
   /* Mode raw sur l'entree : desactive echo + line buffer pour ReadConsole. */
   DWORD mode = 0;
   if (hIn && GetConsoleMode(hIn, &mode)) {
-    SetConsoleMode(hIn, mode & ~(ENABLE_ECHO_OUTPUT | ENABLE_LINE_INPUT));
+    SetConsoleMode(hIn, mode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
   }
 
   DWORD mode_out = 0;
@@ -56,7 +56,7 @@ void ui_shutdown(void) {
   if (hIn) {
     DWORD mode = 0;
     if (GetConsoleMode(hIn, &mode)) {
-      SetConsoleMode(hIn, mode | ENABLE_ECHO_OUTPUT | ENABLE_LINE_INPUT);
+      SetConsoleMode(hIn, mode | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
     }
   }
   if (g_ansicolor) {
@@ -117,7 +117,7 @@ ui_key ui_poll_key(void) {
   /* Lit la touche. */
   wchar_t ch = 0;
   DWORD read = 0;
-  if (!ReadConsoleW(hIn, &ch, 1, &read) || read == 0) return UI_KEY_NONE;
+  if (!ReadConsoleW(hIn, &ch, 1, &read, NULL) || read == 0) return UI_KEY_NONE;
 
   switch (ch) {
     case 0:              return UI_KEY_NONE; /* touche speciale (fleches) : pas geree ici */
