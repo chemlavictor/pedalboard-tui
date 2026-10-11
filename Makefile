@@ -89,7 +89,8 @@ dist: windows
 	@mkdir -p dist
 	@cp $(WIN_TARGET) dist/tdp.exe
 	@copied=0; \
-	for f in /mingw64/bin/libportaudio-0.dll /mingw32/bin/libportaudio-0.dll /ucrt64/bin/libportaudio-0.dll \
+	for f in /mingw64/bin/libportaudio.dll /mingw32/bin/libportaudio.dll /ucrt64/bin/libportaudio.dll \
+	         /mingw64/bin/libportaudio-0.dll /mingw32/bin/libportaudio-0.dll /ucrt64/bin/libportaudio-0.dll \
 	         /mingw64/bin/portaudio.dll /mingw32/bin/portaudio.dll /ucrt64/bin/portaudio.dll; do \
 	  if [ -f "$$f" ]; then cp "$$f" dist/portaudio.dll; echo "  DLL: $$f -> dist/portaudio.dll"; copied=1; break; fi; \
 	done; \
