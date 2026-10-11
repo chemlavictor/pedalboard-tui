@@ -73,20 +73,60 @@ static const char *strcasestr(const char *haystack, const char *needle) {
   return NULL;
 }
 
-int devtest_test_outputs(const char *api_filter) {
+int devtest_test_outputs(int device, int duration_ms, const char *api_filter) {
   if (Pa_Initialize() != paNoError) {
     printf("TDP: PortAudio indisponible\n");
     return -1;
   }
 
+  gen_bip(g_bip, BIP_SAMPLES, 48000.0);
+
+  /* Cas 1 : un device specifique est demande. */
+  if (device >= 0) {
+    const PaDeviceInfo *info = Pa_GetDeviceInfo(device);
+    if (!info || info->maxOutputChannels < 1) {
+      printf("TDP: device %d n'est pas une sortie\n", device);
+      Pa_Terminate();
+      return 0;
+    }
+    const char *api_name = device_api_name(device);
+    char name[128];
+    safe_name(info->name, name, sizeof name);
+    printf("TDP: test de la sortie — ecoute le bip (%d s)\n", duration_ms / 1000);
+    printf("    sortie : [%2d]  [%-12s]  %s\n\n", device, api_name, name);
+
+    PaStreamParameters out_params;
+    out_params.device = device;
+    out_params.channelCount = 1;
+    out_params.sampleFormat = paFloat32;
+    out_params.suggestedLatency = info->defaultLowOutputLatency;
+    out_params.hostApiSpecificStreamInfo = NULL;
+
+    PaStream *stream = NULL;
+    PaError err = Pa_OpenStream(&stream, NULL, &out_params, 48000.0, 256,
+        paNoFlag, bip_callback, NULL);
+    if (err != paNoError) {
+      printf("(impossible d'ouvrir la sortie, err=%d)\n", err);
+      Pa_Terminate();
+      return 0;
+    }
+    g_bip_pos = 0;
+    Pa_StartStream(stream);
+    Pa_Sleep(duration_ms);
+    Pa_StopStream(stream);
+    Pa_CloseStream(stream);
+    printf("\nTDP: test termine.\n");
+    Pa_Terminate();
+    return 0;
+  }
+
+  /* Cas 2 : teste tous les devices (option : filtre API). */
   int n_dev = Pa_GetDeviceCount();
   if (n_dev <= 0) {
     printf("TDP: aucun peripherique audio\n");
     Pa_Terminate();
     return 0;
   }
-
-  gen_bip(g_bip, BIP_SAMPLES, 48000.0);
 
   printf("TDP: test des sorties%s — ecoute le bip sur chaque peripherique\n",
          api_filter ? " (filtre: %s)" : "");

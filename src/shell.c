@@ -164,9 +164,9 @@ static int cmd_help(int argc, char **argv) {
     "  status          Snapshot du niveau (RMS/peak in/out, etat)\n"
     "  s               (alias de status)\n"
     "  test          Accordeur : note + cents en continu ('q'/Entree = arreter, Ctrl+C = quitter)\n"
-    "  test_out      Test des sorties : joue un bip sur chaque device (pour identifier le bon)\n"
-    "  test_out <API> Test des sorties filtre par API (ex: test_out WASAPI)\n"
-    "  test_in       Test des entrees : lit le volume de chaque device (2 s chacun)\n"
+    "  test_out      Test des sorties : joue un bip (sur le out selectionne, ou tous)\n"
+    "  test_out <API> Test des sorties filtre par API (si aucun out selectionne)\n"
+    "  test_in       Test des entrees : volume du in selectionne (15 s) ou tous\n"
     "  watch           Affichage continu du niveau (on/off)\n"
     "  pedals          Liste les pedales disponibles\n"
     "  info <nom>      Details d'une pedale (params, min/max/defaut)\n"
@@ -353,26 +353,37 @@ static int cmd_chain(int argc, char **argv) {
   return 0;
 }
 
+static int g_in_dev = -1;  /* -1 = defaut */
+static int g_out_dev = -1;
+
 static int cmd_reset(int argc, char **argv) {
   (void)argc; (void)argv;
-  if (g_chain.len == 0) { printf("(aucune chaine a reset)\n"); return 0; }
-  for (int i = 0; i < g_chain.len; ++i) {
-    const pedal_def *d = g_chain.defs[i];
-    int pi = 0;
-    for (const pedal_param *p = d->params; p && p->name && pi < MAX_PARAMS; ++p, ++pi) {
-      g_chain.state[i].v[pi] = p->def;
+  int did_something = 0;
+  if (g_chain.len > 0) {
+    for (int i = 0; i < g_chain.len; ++i) {
+      const pedal_def *d = g_chain.defs[i];
+      int pi = 0;
+      for (const pedal_param *p = d->params; p && p->name && pi < MAX_PARAMS; ++p, ++pi) {
+        g_chain.state[i].v[pi] = p->def;
+      }
     }
+    printf("TDP: params reset aux defauts du catalogue\n");
+    did_something = 1;
   }
-  printf("TDP: params reset aux defauts du catalogue\n");
+  /* Reset aussi les devices in/out aux defauts (-1). */
+  if (g_in_dev != -1 || g_out_dev != -1) {
+    g_in_dev = -1;
+    g_out_dev = -1;
+    printf("TDP: entree/sortie reset au defaut (systeme)\n");
+    did_something = 1;
+  }
+  if (!did_something) printf("(rien a reset)\n");
   return 0;
 }
 
 /* ------------------------------------------------------------------ */
 /* in / out / start / stop (audio)                                     */
 /* ------------------------------------------------------------------ */
-
-static int g_in_dev = -1;  /* -1 = defaut */
-static int g_out_dev = -1;
 
 /* Copie un nom de device en remplaçant les caracteres de controle par des
  * espaces, pour afficher sur une seule ligne. */
@@ -572,17 +583,27 @@ static int cmd_test(int argc, char **argv) {
   return 0;
 }
 
-/* Test des sorties audio : joue un bip sur chaque device (option: filtre API). */
+/* Test des sorties audio : bip sur chaque device (ou le device selectionne). */
 static int cmd_test_out(int argc, char **argv) {
+  /* Si un out est selectionne, teste celui-la (5 s). Sinon tous (option : API). */
+  if (g_out_dev >= 0) {
+    devtest_test_outputs(g_out_dev, 5000, NULL);
+    return 0;
+  }
   const char *api_filter = (argc >= 2) ? argv[1] : NULL;
-  devtest_test_outputs(api_filter);
+  devtest_test_outputs(-1, 0, api_filter);
   return 0;
 }
 
-/* Test de l'entree : affiche le volume percu (0-100%) pendant 5 s. */
+/* Test de l'entree : volume du device selectionne (15 s) ou tous. */
 static int cmd_test_in(int argc, char **argv) {
   (void)argc; (void)argv;
-  in_test_run();
+  /* Si un in est selectionne, teste celui-la (15 s). Sinon tous. */
+  if (g_in_dev >= 0) {
+    in_test_run(g_in_dev, 15000);
+  } else {
+    in_test_run(-1, 0);
+  }
   return 0;
 }
 
