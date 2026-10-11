@@ -1,26 +1,28 @@
-# TDP — Terminal Distortion Pedal
-# C11, 2 threads (audio RT + UI), PortAudio. UI : ncurses (Linux) / console (Windows).
+# TDP — Terminal Distortion Pedal (CLI)
+# C11, 2 threads (audio RT + main CLI), PortAudio. UI : shell de commandes (portable).
 
 CC      ?= cc
 CFLAGS  ?= -std=c11 -O2 -Wall -Wextra -pthread
 LDFLAGS ?=
-LDLIBS  ?= -lportaudio -lncurses -lm
+LDLIBS  ?= -lportaudio -lm
 
 SRC_DIR := src
 INC_DIR := include
 BUILD   := build
 TARGET  := $(BUILD)/tdp
 TEST    := $(BUILD)/test_dsp
+TEST_TDP := $(BUILD)/test_tdp
 
 # Hash git court (7 chars) injecté dans le binaire.
 GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "nogit")
 VERSION_FLAG := -DTDP_GIT_HASH=\"$(GIT_HASH)\"
 
-# Cœur commun (réutilisé identique sur Linux et Windows).
-CORE_SRCS := $(SRC_DIR)/main.c $(SRC_DIR)/audio.c $(SRC_DIR)/dsp.c $(SRC_DIR)/params.c
-# UI par plateforme.
-LINUX_SRCS  := $(CORE_SRCS) $(SRC_DIR)/ui_ncurses.c
-WIN_SRCS    := $(CORE_SRCS) $(SRC_DIR)/ui_windows.c
+# Cœur commun (CLI) — réutilisé identique sur Linux et Windows.
+CORE_SRCS := $(SRC_DIR)/main.c $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c \
+             $(SRC_DIR)/audio.c $(SRC_DIR)/dsp.c $(SRC_DIR)/params.c
+
+LINUX_SRCS  := $(CORE_SRCS)
+WIN_SRCS    := $(CORE_SRCS)
 
 OBJS := $(LINUX_SRCS:$(SRC_DIR)/%.c=$(BUILD)/%.o)
 DEPS := $(OBJS:.o=.d)
@@ -47,12 +49,16 @@ clean:
 run: $(TARGET)
 	./$(TARGET)
 
-# Tests DSP purs : pas de PortAudio/ncurses, tourne sans carte son ni TTY.
-test: $(TEST)
+# Tests DSP + catalogue : pas de PortAudio, tourne sans carte son ni TTY.
+test: $(TEST) $(TEST_TDP)
 	./$(TEST)
+	./$(TEST_TDP)
 
 $(TEST): tests/test_dsp.c $(INC_DIR)/dsp.h $(INC_DIR)/pedals.h $(SRC_DIR)/dsp.c $(SRC_DIR)/pedals.c | $(BUILD)
 	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_dsp.c $(SRC_DIR)/dsp.c $(SRC_DIR)/pedals.c -lm
+
+$(TEST_TDP): tests/test_tdp.c $(INC_DIR)/shell.h $(INC_DIR)/pedals.h $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c | $(BUILD)
+	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_tdp.c $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c -lm
 
 # Vérification mémoire (Valgrind). Exige `valgrind` installé.
 check: test

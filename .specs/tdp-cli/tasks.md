@@ -47,7 +47,7 @@ Design: .specs/tdp-cli/design.md
     - Chaîne complète : booster→distortion→volume → sortie attendue.
   - Validation: `make test` + `make check` (Valgrind) passent.
 
-- [ ] 2.1 Shell de base (interactif + script)
+- [x] 2.1 Shell de base (interactif + script)
   - ID: T-004
   - Requirement(s): FR-001, FR-009
   - Design: Component 1 (shell.c)
@@ -58,7 +58,7 @@ Design: .specs/tdp-cli/design.md
     - `main.c` : appeler le shell (remplacer la boucle TUI).
   - Validation: `./tdp` → `tdp> ` ; `help` affiche la vue d'ensemble ; `quit` sort.
 
-- [ ] 2.2 Parser .tdp + commande load
+- [x] 2.2 Parser .tdp + commande load
   - ID: T-005
   - Requirement(s): FR-004
   - Design: Component 1 + Data Flow
@@ -70,7 +70,7 @@ Design: .specs/tdp-cli/design.md
     - `load <fichier>` + `chain` (afficher).
   - Validation: `load guitar.tdp` ; `chain` affiche ; fichier absent → erreur ; pédale inconnue → erreur (ligne N).
 
-- [ ] 2.3 Tests parser .tdp
+- [x] 2.3 Tests parser .tdp
   - ID: T-006
   - Requirement(s): FR-004
   - Design: Testing Strategy
