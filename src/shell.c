@@ -806,22 +806,12 @@ static void hist_save(void) {
   fclose(f);
 }
 
-/* Lit une ligne avec auto-completion + historique + curseur. Retourne :
- *  0 = ok (ligne validee), -1 = EOF, -2 = Ctrl+C (quit). */
+/* Lit une ligne avec auto-completion + historique. Retourne :
+ *  0 = ok (ligne validee), -1 = EOF, -2 = Ctrl+C (quit).
+ * Le curseur est toujours a la fin (pas de navigation ←/→, la console le gere). */
 static int readline_tdp(char *buf, int bufsz) {
   int len = 0;
-  int cursor = 0; /* position du curseur (0..len) */
   buf[0] = '\0';
-
-  /* Re-affiche la ligne avec le curseur a la position 'cursor'. */
-  #define REDRAW() do { \
-    printf("\r"); \
-    for (int _i = 0; _i < len + 15; ++_i) printf(" "); \
-    printf("\rtdp> %.*s", len, buf); \
-    /* Deplace le curseur a 'cursor' en faisant marche arriere. */ \
-    for (int _i = len - 1; _i >= cursor; --_i) printf("\b"); \
-    fflush(stdout); \
-  } while (0)
 
   for (;;) {
     int c = tdp_getch();
@@ -847,38 +837,17 @@ static int readline_tdp(char *buf, int bufsz) {
       g_hist_pos = -1;
       return 0;
     }
-    if (c == 127 || c == 8) { /* Backspace : efface avant le curseur */
-      if (cursor > 0) {
-        /* Supprime le caractere a (cursor-1). */
-        memmove(&buf[cursor - 1], &buf[cursor], (size_t)(len - cursor) + 1);
+    if (c == 127 || c == 8) { /* Backspace : la console le gere (mode raw) */
+      if (len > 0) {
         --len;
-        --cursor;
-        REDRAW();
+        buf[len] = '\0';
+        printf("\b \b");
+        fflush(stdout);
       }
       continue;
     }
-    if (c == 203 || c == 27) { /* Fleche gauche (Windows=203, Linux=27 seq) */
-      if (c == 27) { /* Linux : lit la sequence [ D */
-        int c1 = tdp_getch(), c2 = tdp_getch();
-        (void)c1;
-        if (c2 != 'D') continue; /* pas une fleche gauche */
-      }
-      if (cursor > 0) {
-        --cursor;
-        REDRAW();
-      }
-      continue;
-    }
-    if (c == 204) { /* Fleche droite (Windows=204) */
-      if (cursor < len) {
-        ++cursor;
-        REDRAW();
-      }
-      continue;
-    }
-    if (c == 27) { /* ESC : fleches Linux (haut/bas deja gerees, ici on ne fait rien) */
-      int c1 = tdp_getch(), c2 = tdp_getch();
-      (void)c1; (void)c2;
+    if (c == 203 || c == 204) { /* Fleches gauche/droite : ignorees (la console gere le curseur) */
+      /* On ne fait rien : la console deplace le curseur naturellement. */
       continue;
     }
     if (c == 200 || c == 72) { /* Fleche haut (Windows _getch=200, Linux=27 seq) */
@@ -895,7 +864,6 @@ static int readline_tdp(char *buf, int bufsz) {
         memcpy(buf, g_hist[g_hist_pos], (size_t)hl);
         buf[hl] = '\0';
         len = hl;
-        cursor = hl; /* curseur a la fin */
         redraw_line(buf, len);
       }
       continue;
@@ -993,20 +961,13 @@ static int readline_tdp(char *buf, int bufsz) {
       }
       continue;
     }
-    /* Caractere normal : insere a la position du curseur. */
+    /* Caractere normal : insere a la fin. */
     if (len < bufsz - 1) {
-      /* Decale les caracteres de 'cursor' a la fin d'une case. */
-      memmove(&buf[cursor + 1], &buf[cursor], (size_t)(len - cursor));
-      buf[cursor] = (char)c;
-      ++len;
-      ++cursor;
-      /* Affiche le caractere insere + re-affiche le reste. */
+      buf[len++] = (char)c;
       putchar(c);
-      for (int _i = cursor; _i < len; ++_i) putchar(buf[_i]);
       fflush(stdout);
     }
   }
-  #undef REDRAW
 }
 
 /* ------------------------------------------------------------------ */
