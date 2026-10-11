@@ -111,11 +111,13 @@ static void render(void) {
   ui_text(6, 0, "OUTPUT  "); ui_text(6, 8, vub);
   { char db[48]; snprintf(db, sizeof db, "%6.1f dB  peak", rms_to_db(out_rms)); ui_text(6, 30, db); }
 
-  /* Pied de page (FR-028) */
+  /* Pied de page (FR-028) : info systeme + rappel des raccourcis. */
   char foot[128];
   snprintf(foot, sizeof foot, "%ld Hz - buffer %ld - PortAudio %s",
            sr, fb, pa_ok ? "OK" : "ERREUR");
-  ui_text(ui_lines() - 1, 0, foot);
+  ui_text(ui_lines() - 2, 0, foot);
+  ui_text(ui_lines() - 1, 0,
+          "SP:bypass M:mute Up/Dn:param Lt/Rt:+/- R:reset q:quit");
 
   /* Titre fenêtre (FR-007) */
   char title[128];
