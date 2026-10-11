@@ -895,6 +895,7 @@ static int readline_tdp(char *buf, int bufsz) {
         memcpy(buf, g_hist[g_hist_pos], (size_t)hl);
         buf[hl] = '\0';
         len = hl;
+        cursor = hl; /* curseur a la fin */
         redraw_line(buf, len);
       }
       continue;
@@ -992,13 +993,20 @@ static int readline_tdp(char *buf, int bufsz) {
       }
       continue;
     }
-    /* Caractere normal. */
+    /* Caractere normal : insere a la position du curseur. */
     if (len < bufsz - 1) {
-      buf[len++] = (char)c;
+      /* Decale les caracteres de 'cursor' a la fin d'une case. */
+      memmove(&buf[cursor + 1], &buf[cursor], (size_t)(len - cursor));
+      buf[cursor] = (char)c;
+      ++len;
+      ++cursor;
+      /* Affiche le caractere insere + re-affiche le reste. */
       putchar(c);
+      for (int _i = cursor; _i < len; ++_i) putchar(buf[_i]);
       fflush(stdout);
     }
   }
+  #undef REDRAW
 }
 
 /* ------------------------------------------------------------------ */
