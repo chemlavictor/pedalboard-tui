@@ -4,6 +4,7 @@
  * seule l'implémentation diffère (src/ui_ncurses.c / src/ui_windows.c).
  */
 #include <signal.h>
+#include <stdbool.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +15,6 @@
 #include <windows.h>
 #include <wincon.h>
 #include <process.h>
-static bool WINAPI ctrl_handler(DWORD type) { (void)type; g_signal_quit = 1; return TRUE; }
 #else
 #include <unistd.h>
 #endif
@@ -28,7 +28,12 @@ enum { SEL_GAIN = 0, SEL_MASTER = 1 };
 static int g_selected = SEL_GAIN;
 
 static volatile sig_atomic_t g_signal_quit = 0;
+
+#ifndef _WIN32
 static void on_sigint(int sig) { (void)sig; g_signal_quit = 1; }
+#else
+static BOOL WINAPI ctrl_handler(DWORD type) { (void)type; g_signal_quit = 1; return TRUE; }
+#endif
 
 static float af_load(const _Atomic float *a) { return atomic_load_explicit(a, memory_order_relaxed); }
 static void af_store(_Atomic float *a, float v) { atomic_store_explicit(a, v, memory_order_relaxed); }
