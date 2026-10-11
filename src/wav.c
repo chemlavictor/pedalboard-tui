@@ -3,8 +3,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <sys/stat.h>
+#ifdef _WIN32
+#include <direct.h> /* mkdir (Windows) */
+#else
+#include <sys/stat.h> /* mkdir (POSIX) */
 #include <sys/types.h>
+#endif
 #include <stdint.h>
 
 /* Écrit l'en-tête RIFF/WAVE (44 bytes) + les données PCM 16-bit. */
@@ -54,8 +58,13 @@ int wav_write(const char *path, const float *samples, long n, double sr) {
 
 /* Nom horodaté : recordings/YYYY-MM-DD_HH-MM-SS.wav (crée recordings/). */
 int wav_timestamped_name(char *out, int out_len) {
-  /* Crée le dossier recordings/ s'il n'existe pas (mkdir ignore si existe). */
+  /* Cree le dossier recordings/ s'il n'existe pas (mkdir ignore si existe).
+   * Windows : mkdir (direct.h) ; POSIX : mkdir (sys/stat.h). */
+#ifdef _WIN32
+  _mkdir("recordings");
+#else
   mkdir("recordings", 0755);
+#endif
 
   time_t t = time(NULL);
   struct tm *lt = localtime(&t);

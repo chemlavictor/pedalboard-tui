@@ -73,7 +73,7 @@ check: test
 check-app: $(TARGET)
 	valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=99 timeout 5 ./$(TARGET) || [ $$? -eq 124 ]
 
-# ---- Windows (MSYS2 / MinGW64) : tdp.exe sans ncurses ----
+# ---- Windows (MSYS2 / MinGW64) : tdp.exe (CLI, sans ncurses) ----
 WIN_TARGET  := $(BUILD)/tdp.exe
 WIN_OBJS    := $(WIN_SRCS:$(SRC_DIR)/%.c=$(BUILD)/win_%.o)
 WIN_CFLAGS  := -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) $(VERSION_FLAG)
@@ -84,15 +84,19 @@ $(WIN_TARGET): $(WIN_OBJS)
 	@mkdir -p $(BUILD)
 	$(CC) $(WIN_CFLAGS) -o $@ $(WIN_OBJS) $(WIN_LDLIBS)
 
-$(BUILD)/win_main.o:    $(SRC_DIR)/main.c      | $(BUILD)
+$(BUILD)/win_main.o:    $(SRC_DIR)/main.c    | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
-$(BUILD)/win_audio.o:   $(SRC_DIR)/audio.c     | $(BUILD)
+$(BUILD)/win_shell.o:   $(SRC_DIR)/shell.c   | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
-$(BUILD)/win_dsp.o:     $(SRC_DIR)/dsp.c       | $(BUILD)
+$(BUILD)/win_pedals.o:  $(SRC_DIR)/pedals.c  | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
-$(BUILD)/win_params.o:  $(SRC_DIR)/params.c    | $(BUILD)
+$(BUILD)/win_audio.o:   $(SRC_DIR)/audio.c   | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
-$(BUILD)/win_ui_windows.o: $(SRC_DIR)/ui_windows.c | $(BUILD)
+$(BUILD)/win_dsp.o:     $(SRC_DIR)/dsp.c     | $(BUILD)
+	$(CC) $(WIN_CFLAGS) -c $< -o $@
+$(BUILD)/win_params.o:  $(SRC_DIR)/params.c  | $(BUILD)
+	$(CC) $(WIN_CFLAGS) -c $< -o $@
+$(BUILD)/win_wav.o:     $(SRC_DIR)/wav.c     | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
 
 # Assembler dist/ (tdp.exe + portaudio.dll + README).

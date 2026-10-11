@@ -6,9 +6,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifdef _WIN32
+#include <windows.h> /* Sleep */
+#else
+#include <time.h>    /* nanosleep (POSIX) */
+#endif
 
 #include "pedals.h"
 #include "audio.h"
@@ -40,7 +46,8 @@ static int cmd_out(int argc, char **argv);
 static int cmd_start(int argc, char **argv);
 static int cmd_stop(int argc, char **argv);
 static int cmd_record(int argc, char **argv);
-static int cmd_noop(int argc, char **argv);
+static int cmd_status(int argc, char **argv);
+static int cmd_watch(int argc, char **argv);
 
 /* Table de dispatch. Les commandes audio (in/out/start/stop/record/load...)
  * seront branchées dans les phases suivantes (audio.c / wav.c). */
@@ -58,9 +65,8 @@ static struct { const char *name; cmd_fn fn; } g_cmds[] = {
   { "start",  cmd_start },
   { "stop",   cmd_stop },
   { "record", cmd_record },
-  /* placeholders (implémentés en phase 4) : */
-  { "status", cmd_noop },
-  { "watch",  cmd_noop },
+  { "status", cmd_status },
+  { "watch",  cmd_watch },
 };
 static const int N_CMDS = (int)(sizeof g_cmds / sizeof g_cmds[0]);
 
@@ -136,12 +142,6 @@ static int cmd_info(int argc, char **argv) {
            p->desc);
   }
   if (!has_params) printf("(pas de parametre)\n");
-  return 0;
-}
-
-static int cmd_noop(int argc, char **argv) {
-  (void)argc; (void)argv;
-  printf("(commande pas encore implementee — phase suivante)\n");
   return 0;
 }
 
@@ -372,6 +372,68 @@ static int cmd_record(int argc, char **argv) {
   return 0;
 }
 
+/* Sleep portable (ms) : nanosleep (POSIX) ou Sleep (Windows). */
+static void tdp_sleep_ms(long ms) {
+#ifdef _WIN32
+  Sleep((DWORD)ms);
+#else
+  struct timespec ts = { ms / 1000, (ms % 1000) * 1000000L };
+  nanosleep(&ts, NULL);
+#endif
+}
+
+/* Convertit un niveau lineaire (RMS) en dB (0.0 -> -inf, affiche -99). */
+static float lin2db(float lin) {
+  if (lin <= 1e-7f) return -99.0f;
+  return 20.0f * log10f(lin);
+}
+
+/* Affiche un snapshot du niveau (in/out) + etat. */
+static void print_status_line(void) {
+  float in_rms  = atomic_load_explicit(&g_sh.vu_in_rms, memory_order_relaxed);
+  float in_peak = atomic_load_explicit(&g_sh.vu_in_peak, memory_order_relaxed);
+  float out_rms  = atomic_load_explicit(&g_sh.vu_out_rms, memory_order_relaxed);
+  float out_peak = atomic_load_explicit(&g_sh.vu_out_peak, memory_order_relaxed);
+  int running = atomic_load_explicit(&g_sh.running, memory_order_relaxed);
+  int recording = atomic_load_explicit(&g_sh.recording, memory_order_relaxed);
+  printf("  in  RMS %6.1f dB | peak %6.1f dB   out RMS %6.1f dB | peak %6.1f dB   [%s%s]\n",
+         lin2db(in_rms), lin2db(in_peak), lin2db(out_rms), lin2db(out_peak),
+         running ? "flux" : "stop", recording ? "+REC" : "");
+}
+
+static int cmd_status(int argc, char **argv) {
+  (void)argc; (void)argv;
+  printf("Etats :\n");
+  int running = atomic_load_explicit(&g_sh.running, memory_order_relaxed);
+  int recording = atomic_load_explicit(&g_sh.recording, memory_order_relaxed);
+  int pa = atomic_load_explicit(&g_sh.pa_ok, memory_order_relaxed);
+  printf("  flux : %s   record : %s   portaudio : %s\n",
+         running ? "ON" : "OFF", recording ? "ON" : "OFF", pa ? "ok" : "ko");
+  if (g_chain.len > 0) {
+    printf("  chaine : %d pedale(s)", g_chain.len);
+    for (int i = 0; i < g_chain.len; ++i) printf(" %s", g_chain.defs[i]->name);
+    printf("\n");
+  } else {
+    printf("  chaine : (aucune)\n");
+  }
+  if (running) {
+    printf("  niveau :\n");
+    print_status_line();
+  } else {
+    printf("  (flux arrete — pas de niveau)\n");
+  }
+  return 0;
+}
+
+static int g_watch = 0;
+
+static int cmd_watch(int argc, char **argv) {
+  (void)argc; (void)argv;
+  g_watch = !g_watch;
+  printf("TDP: watch %s\n", g_watch ? "ON (affichage continu, 'watch' pour arreter)" : "OFF");
+  return 0;
+}
+
 /* Stoppe l'enregistrement (si actif) + sauvegarde le WAV horodate.
  * Appelle quand l'utilisateur tape <Entree> (ligne vide). */
 static void record_stop_and_save(void) {
@@ -481,6 +543,15 @@ void shell_run(const char *script_path) {
 
   char line[LINE_MAX];
   while (!shell_quit_flag) {
+    /* Mode watch : affiche le niveau en continu (retour chariot) + pause.
+     * On n'affiche que si le flux est en cours. */
+    if (g_watch && atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
+      printf("\r");
+      print_status_line();
+      fflush(stdout);
+      tdp_sleep_ms(100); /* ~100 ms */
+      continue;
+    }
     if (interactive) {
       printf("tdp> ");
       fflush(stdout);

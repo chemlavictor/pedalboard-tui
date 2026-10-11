@@ -1,6 +1,6 @@
-# Pedalboard TUI — Terminal Distortion Pedal (TDP)
+# Pedalboard TUI — Terminal Distortion Pedal (TDP) — **CLI**
 
-Pédale de distorsion numérique pilotée entièrement au clavier, avec une interface TUI (ncurses) et un moteur audio temps réel (PortAudio).
+Chaîne de pédales audio temps réel (C11 + PortAudio), pilotée par un **shell de commandes**. Plus de TUI/ncurses : tout se fait au clavier via des commandes texte (`load`, `start`, `record`, ...).
 
 **Supporte Windows ET Linux avec le même code.**
 
@@ -9,240 +9,189 @@ Pédale de distorsion numérique pilotée entièrement au clavier, avec une inte
 ### Linux / macOS (ou WSL)
 ```bash
 # 1. Dépendances (une fois)
-sudo apt install -y build-essential portaudio19-dev libncurses-dev valgrind git
+sudo apt install -y build-essential portaudio19-dev valgrind git
+# (ncurses n'est plus nécessaire)
 
 # 2. Compile + lance
-./run.sh            # compile si besoin, puis lance
-# ou : make && make run
+make && make run
+# ou : ./build/tdp            (mode interactif)
+# ou : ./build/tdp script.txt (mode script, ligne par ligne)
 ```
 
 ### Windows (natif, sans WSL)
 
-**1. Installer MSYS2** (une fois) :
-- Télécharge : https://www.msys2.org/
-- Installe par défaut dans `C:\msys64`
+**1. Installer MSYS2** (une fois) : https://www.msys2.org/ → `C:\msys64`.
 
-**2. Ouvre le shell « MSYS2 MINGW64 »** (menu démarrer) — PAS « MSYS2 » normal, PAS « UCRT64 ».
+**2. Ouvre le shell « MSYS2 MINGW64 »** (menu démarrer) — PAS « MSYS2 » normal.
 
-**3. Dans ce shell, installe TOUTES les dépendances** (une fois) :
+**3. Installe les dépendances** (une fois) :
 ```bash
 pacman -S --noconfirm \
   mingw-w64-x86_64-gcc \
   mingw-w64-x86_64-portaudio \
   make \
-  git
+  git \
+  unzip curl
 ```
+> Si tu es en **UCRT64** (pas MINGW64) : utilise `mingw-w64-ucrt-x86_64-gcc` et `mingw-w64-ucrt-x86_64-portaudio`.
 
-**4. Va dans le repo + compile** :
+**4. Compile** :
 ```bash
 cd /c/Users/utilisateur/Documents/pedalboard-tui
-make dist           # compile tdp.exe + portaudio.dll -> dist/
+make dist          # compile tdp.exe + copie portaudio.dll -> dist/
 ```
 
 **5. Lancer** :
 ```bash
 dist/tdp.exe
 ```
-Ou double-clique **`run.bat`** dans l'explorateur (fonctionne depuis n'importe quel dossier).
+Ou double-clique **`run.bat`**.
 
-> **Vérifie la version** : le pied de page de la TUI affiche `v<hash>` (ex. `vb5cb4a5`).
-> Si tu vois `vnogit` = `git` n'est pas installé dans MSYS2 → `pacman -S --noconfirm git` puis `make dist`.
+> **Version** : `help` affiche le hash git du build (`v<hash>`). Si le shell ne part pas, vérifie que `portaudio.dll` est dans `dist/` (côte à côte de `tdp.exe`).
 
 ## C'est quoi ?
 
-Une petite application C11 qui :
+Une application C11 à **2 threads** qui :
+- Capture le son via **PortAudio** (mono, 48 kHz, buffer 256), applique une **chaîne de pédales en série** dans un thread temps réel.
+- S'exécute dans un **shell de commandes** : `tdp> load guitar.tdp`, `tdp> start`, `tdp> record`, etc.
+- **Enregistre** le signal post-pédales en **WAV horodaté** (`record` + Entrée).
+- Se pilote entièrement au clavier, portable Windows + Linux.
 
-- Capture le son de ta carte audio via **PortAudio** (mono, 44.1 ou 48 kHz, buffer 128–256, latence ≤ 10 ms).
-- Applique un DSP de distorsion : `y = tanh(G·x)` puis master volume, dans un thread temps réel.
-- Affiche une interface textuelle (ncurses) avec jauges Gain/Master, VU-mètres RMS+peak d'entrée/sortie, et des toggles ON/BYPASS et MUTE.
-- Se pilote entièrement au clavier (voir « Contrôles »).
+## Commandes
 
-**Scope V1** : waveform unique (tanh), mono, Gain + Master uniquement (pas de tone, pas de boost).
+| Commande | Effet |
+|----------|-------|
+| `in` / `out` | Lister les entrées / sorties audio |
+| `in N` / `out N` | Sélectionner le périphérique N |
+| `load <fichier>` | Charger une chaîne de pédales depuis un `.tdp` |
+| `chain` | Afficher la chaîne chargée |
+| `start` | Démarrer le flux audio (pédales appliquées) |
+| `stop` | Arrêter le flux audio |
+| `record` | Commencer l'enregistrement (post-pédales) |
+| `<Entrée>` | Arrêter l'enregistrement + sauvegarde `recordings/<date>.wav` |
+| `status` | Snapshot du niveau (RMS/peak in/out) + état |
+| `watch` | Affichage continu du niveau (on/off) |
+| `pedals` | Lister les pédales disponibles |
+| `info <nom>` | Détails d'une pédale (params, min/max/défaut) |
+| `reset` | Reset les params de la chaîne aux défauts |
+| `help` | Vue d'ensemble (commandes + pédales + exemple) |
+| `quit` | Quitter |
 
-## Comment ça marche (architecture)
+## Pédales (V1)
 
-Deux threads communiquent via des variables `stdatomic` (lock-free) :
+| Pédale | Paramètre | Défaut | Rôle |
+|--------|-----------|--------|------|
+| `booster` | `level` (0..2) | 1.5 | Gain linéaire propre (type TS9 level) |
+| `distortion` | `gain` (0..1) | 0.5 | Distorsion `tanh(G·x)` |
+| `noise_gate` | `threshold` (dB) | -45 | Coupe le bruit de fond si RMS < seuil |
+| `volume` | `level` (0..1) | 0.75 | Master volume de sortie |
+| `mute` | — | off | Silenced total |
 
+## Fichier de pédales (`.tdp`)
+
+Une pédale par ligne (l'ordre = l'ordre en série), `param=valeur`, `#` = commentaire.
+
+Exemple `guitar.tdp` :
 ```
-┌──────────────────────────┐      stdatomic (params, vu)      ┌──────────────────────────┐
-│  Thread UI (main)        │ ─────────────────────────────────▶│  Thread Audio (RT)       │
-│  ncurses + clavier       │ ◀───────────────────────────────── │  PortAudio callback      │
-│  ~30-60 fps              │         VU RMS + peak             │  tanh + master + VU      │
-└──────────────────────────┘                                   └──────────────────────────┘
+# Chaîne chug : booster -> distorsion -> noise gate -> volume
+booster level=2.0
+distortion gain=0.6
+noise_gate threshold=-40
+volume level=0.8
 ```
 
-- **Thread Audio** : jamais bloqué, aucune allocation, aucun I/O. Ne lit que des atomics. Il calcule aussi les VU (RMS + peak-hold 500 ms).
-- **Thread UI** : boucle ncurses, `getch` non bloquant, update écran.
-- **Bypass** (ESPACE) : atomic `bool` ; le signal passe en raw.
-- **Mute** (M) : atomic `bool` distinct ; la sortie est forcée à 0 mais le DSP continue (VU INPUT actifs, VU OUTPUT à -∞).
+## Mode script (automatisation)
 
-## Installation
+`./tdp.exe script.txt` exécute les commandes ligne par ligne, sans prompt, puis se termine.
+Utile pour les tests batch / CI.
 
-Prérequis (Linux) :
+## Ajouter une nouvelle pédale (avec un LLM)
 
-```bash
-# Debian/Ubuntu
-sudo apt install build-essential libportaudio2 portaudio19-dev libncurses-dev
+Le catalogue `src/pedals.c` est la **source de vérité** :
+1. Donne `src/pedals.c` à un LLM, demande-lui une nouvelle pédale (param + def + fonction DSP).
+2. Colle le bloc généré dans `src/pedals.c` (tableau de params + def + fonction `process`).
+3. `make` → la pédale est dispo (`pedals`, `info`, `load`).
 
-# Fedora
-sudo dnf install gcc portaudio-devel ncurses-devel
+Recompile (pas de plugin dynamique) — simple et fiable.
 
-# macOS (Homebrew)
-brew install portaudio ncurses
-```
-
-### Build & Run
+## Build & tests
 
 ```bash
 make            # build/tdp
-make run        # démarre et prend l'audio par défaut
+make run        # ./build/tdp
+make test       # tests unitaires (DSP + catalogue + parser + WAV), sans carte son
+make check      # tests sous Valgrind (0 fuite), sans carte son
+make dist       # Windows : dist/tdp.exe + portaudio.dll
 make clean      # nettoie
-make test       # tests unitaires DSP (obligatoires, sans carte son)
-make check      # tests sous Valgrind (fuites / accès invalides), sans carte son
-make check-app  # app réelle sous Valgrind (optionnel, carte son + TTY requis)
 ```
 
-Pour `make check` / `make check-app`, installe Valgrind : `sudo apt install valgrind`.
+## Architecture
 
-### Windows (build compilé — `tdp.exe`)
-
-Version native Windows de la pédale : **sans ncurses**, l'UI est rendue dans la console Windows (blocs Unicode `█▓░`, couleurs, titre de fenêtre). Le cœur DSP/params/audio est réutilisé à l'identique de la V1.
-
-**Option 1 — MSYS2 (recommandé)**
-
-```bash
-# installateur MSYS2, puis dans le shell MSYS2 :
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-portaudio
-# dans le repo :
-make dist        # compile tdp.exe et assemble dist/ (tdp.exe + portaudio.dll + README)
-# ou juste :
-make windows     # -> build/tdp.exe
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Thread main (CLI)                                          │
+│  Boucle : lire commande (stdin/script) -> interpreter       │
+│    in/out, load, start/stop, record, status/watch, pedals  │
+│    Entrée (vide) -> stop record + encoder WAV               │
+└───────────▲─────────────────────────────────────────────────┘
+            │ stdatomic (running, recording, vu, chain_idx)
+┌───────────▼─────────────────────────────────────────────────┐
+│  Thread audio (RT) — callback PortAudio                     │
+│  input -> [pedale1 -> pedale2 -> ... -> pedaleN] -> output  │
+│  VU in/out -> atomiques                                     │
+│  si recording : ecrire dans ring buffer (statique, ~60 s)   │
+│  CONTRAINTES : ni malloc, ni I/O, ni locks.                 │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Option 2 — `build_windows.bat` (secours MinGW direct)**
+- **Thread Audio** : ne fait ni `malloc`/`free`, ni I/O, ni locks. La chaîne de pédales est dans une mémoire statique (index atomique). Le ring buffer d'enregistrement est pré-alloué.
+- **Thread main** : lit les commandes, modifie les atomiques, encode le WAV à l'arrêt du record.
 
-Prérequis : `gcc` (MinGW) + PortAudio (headers/lib) dans le `PATH`. Puis :
+## Dépendances
 
-```bat
-build_windows.bat   # -> dist\tdp.exe + dist\portaudio.dll + dist\README.md
-```
+| Dépendance | Rôle | Linux (apt) | Windows (pacman) |
+|------------|------|-------------|------------------|
+| GCC / Clang ≥ 9 | compiler C11 | `build-essential` | `mingw-w64-x86_64-gcc` |
+| PortAudio ≥ 19.7 | audio temps réel | `portaudio19-dev` | `mingw-w64-x86_64-portaudio` |
+| make | build | `make` | `make` |
+| git | hash version | `git` | `git` |
+| valgrind (optionnel) | check mémoire | `valgrind` | — |
 
-**Lancer**
-
-```bat
-dist\tdp.exe
-```
-
-> Si `portaudio.dll` n'est pas à côté de `tdp.exe`, le lancement affiche un message d'erreur lisible (pas de crash). Les contrôles clavier et l'affichage sont identiques à la V1.
-
-### Lancer sous Windows (WSL2)
-
-La V1 est native Linux (ncurses + PortAudio). Le chemin le plus simple sur une machine Windows est de la faire tourner dans **WSL2** (Ubuntu), pas de porter le code.
-
-```bash
-# 1. WSL2 (depuis PowerShell, une fois)
-wsl --install -d Ubuntu
-```
-
-Puis, **dans WSL2** :
-
-```bash
-sudo apt update && sudo apt install -y build-essential portaudio19-dev libncurses-dev valgrind
-git clone <repo> && cd pedalboard-tui
-make && make test && make run
-```
-
-**Routage audio Windows → WSL2** (pour entendre/voir le son de la guitare) :
-- Si ta carte son apparaît dans WSL2 (`aplay -l` ou `hp -l`), PortAudio/ALSA la voit directement → c'est tout.
-- Sinon, l'audio WSL2 passe parfois par un backend `PulseAudio`/`pipewire` ; installe-le dans WSL2 : `sudo apt install -y pulseaudio` (ou `pipewire`), et assure-toi que le périphérique d'entrée (micro/jack guitare) et de sortie (casque/HP) sont visibles. Utilise idéalement un **casque** pour éviter le larsen (feedback) si la sortie repasse dans l'entrée.
-- Le pied de page de la TUI te dit si PortAudio est `OK` ou `ERREUR` : `ERREUR` = aucune carte détectée dans WSL2, vérifie le branchement + le backend audio.
-
-> Le code n'est **pas** modifié pour WSL2 : c'est la même V1 Ubuntu. Le port natif Windows (`.exe`) et la version navigateur (WASM) restent des pistes V2, hors périmètre ici.
-
-### Dépendances
-
-| Biblio | Rôle |
-|--------|------|
-| PortAudio ≥ 19.7 | capture/lecture audio temps réel |
-| Ncurses ≥ 6.0 | rendu TUI et input clavier |
-| libpthread | threads (UI vs Audio) |
-| GCC ≥ 9 ou Clang ≥ 11 | C11 + atomics |
-
-## Contrôles clavier
-
-| Touche | Action |
-|--------|--------|
-| `ESPACE` | Toggle Bypass / ON (signal passe en raw en mode BYPASS) |
-| `M` | Toggle Mute global (sortie forcée à 0, DSP continue) |
-| `↑` / `↓` | Sélectionner le paramètre (Gain ↔ Master) |
-| `←` / `→` | Diminuer / augmenter le paramètre sélectionné (pas de 5 %) |
-| `I` | Ouvrir le menu de sélection de l'entrée audio |
-| `O` | Ouvrir le menu de sélection de la sortie audio |
-| `R` | Reset aux défauts (Gain = 0.5, Master = 0.75) |
-| `q` ou `CTRL-C` | Quitter proprement (stop audio + endwin) |
-
-**Dans le menu** (après `I` ou `O`) :
-
-| Touche | Action |
-|--------|--------|
-| `↑` / `↓` | Naviguer dans la liste |
-| `ESPACE` | Confirmer le choix (ré-ouvre le stream) |
-| `q` | Annuler |
-
-**Valeurs par défaut** : Gain = **0.5** (50 %), Master = **0.75** (75 %).
-
-**Pied de page** de l'UI affiche (2 lignes) :
-```
-48000 Hz - buffer 256 - PortAudio OK - vb5cb4a5
-SP:bypass M:mute Up/Dn:param Lt/Rt:+/- I:in O:out R:reset q:quit
-```
+> ncurses n'est **plus** nécessaire (le shell est du texte stdout/stdin simple).
 
 ## Structure du projet
 
-> ⚠️ Cette section doit **toujours** refléter l'état réel du dépôt. À mettre à jour à chaque ajout/suppression de dossier ou de fichier.
-
 ```
 pedalboard-tui/
-├── README.md          ← ce fichier (gabarit « toujours à jour »)
-├── LICENSE
-├── Makefile           ← build Linux + cible Windows (make windows / make dist)
-├── build_windows.bat  ← build Windows (MinGW direct) -> dist/
-├── build.bat          ← build Windows auto (detecte gcc/MSYS2, sinon instructions)
-├── run.bat            ← lancer tdp.exe (Windows) depuis n'importe quel dossier
-├── run.sh             ← lancer la TUI (Linux/macOS/WSL), compile si besoin
-├── specs/
-│   └── specs.md       ← spécifications techniques (DSP, TUI, architecture)
-├── src/               ← code C (un fichier par responsabilité)
-│   ├── main.c         ← boucle UI commune (clavier + rendu via ui_*), #ifdef _WIN32
-│   ├── audio.c        ← thread audio : callback PortAudio (contraintes RT)
-│   ├── dsp.c          ← traitement du signal (tanh + master + VU), C pur
-│   ├── params.c       ← instance des atomiques partagées + params_init()
-│   ├── ui_ncurses.c   ← impl UI Linux (ncurses)
-│   └── ui_windows.c   ← impl UI Windows (console native, sans ncurses)
-├── include/           ← headers publics (un par module de src/)
-│   ├── params.h       ← struct tdp_params (atomiques partagées)
-│   ├── dsp.h          ← prototype dsp_process + struct dsp_vu
-│   ├── audio.h        ← prototypes audio_start / audio_stop
-│   └── ui.h           ← interface UI commune (ui_*)
-└── tests/
-    └── test_dsp.c     ← tests unitaires DSP (make test / make check)
+├── README.md            ← ce fichier
+├── Makefile             ← build Linux + Windows (make / make dist)
+├── run.sh / run.bat     ← lanceurs
+├── include/
+│   ├── pedals.h         ← catalogue de pédales (def, params, chain_t)
+│   ├── shell.h          ← interface du shell (shell_run, parse_tdp_line)
+│   ├── audio.h          ← thread audio (audio_shared, rec_ring)
+│   ├── wav.h            ← encodeur WAV + nom horodaté
+│   ├── dsp.h            ← (legacy V1, encore compilé)
+│   └── params.h         ← (legacy V1, encore compilé)
+├── src/
+│   ├── main.c           ← point d'entrée (./tdp [script])
+│   ├── shell.c          ← shell de commandes (boucle + dispatch)
+│   ├── pedals.c         ← catalogue + fonctions DSP des 5 pédales
+│   ├── audio.c          ← thread audio RT (chaîne + VU + ring buffer)
+│   ├── wav.c            ← encodeur WAV PCM 16-bit + nom horodaté
+│   ├── dsp.c            ← (legacy V1)
+│   └── params.c         ← (legacy V1)
+├── tests/
+│   ├── test_dsp.c       ← tests DSP + catalogue + chaîne
+│   ├── test_tdp.c       ← tests parser .tdp
+│   └── test_wav.c       ← tests encodeur WAV
+├── specs/               ← documentation de conception
+└── recordings/          ← (créé à l'usage) WAV horodatés
 ```
-
-> La section `build/` (artefacts) et `dist/` (binaire Windows) existent après build mais ne sont jamais committés.
-
-### Légende des dossiers
-
-- **`specs/`** — documentation de conception. Uniquement des `.md`.
-- **`.specs/`** — specs de développement (brainstorm/requirements/design/tasks).
-- **`src/`** — tout le code C. Un fichier par responsabilité : `main.c` (UI), `audio.c` (PortAudio), `dsp.c` (DSP + VU), `params.c` (atomiques).
-- **`include/`** — headers publics (`.h`). Un header par module de `src/`.
-- **`tests/`** — tests unitaires en C (obligatoires).
-- **`build/`** — artefacts de compilation (jamais commit).
-- **racine** — `Makefile`, `README.md`, `LICENSE`. (Pas de CMake en V1.)
 
 ## Contribuer / Roadmap
 
-Voir [`specs/specs.md`](specs/specs.md) section « Roadmap ».
+Voir [`specs/specs.md`](specs/specs.md). Pistes V2+ : ampli high-gain (simu), wah, delay, reverb, plugin dynamique, multi-pistes.
 
 ## Licence
 

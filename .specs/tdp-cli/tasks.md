@@ -123,7 +123,7 @@ Design: .specs/tdp-cli/design.md
     - Chaîne + VU : buffer → chaîne → VU cohérent.
   - Validation: `make test` + `make check` passent (0 fuite).
 
-- [ ] 4.1 status + watch
+- [x] 4.1 status + watch
   - ID: T-011
   - Requirement(s): FR-008
   - Design: Component 1 + Data Flow
@@ -134,7 +134,7 @@ Design: .specs/tdp-cli/design.md
     - Résoudre OQ-001 (watch ne bloque pas la lecture).
   - Validation: `status` affiche ; `watch on/off` sans bloquer.
 
-- [ ] 4.2 Portabilité Windows (make dist) + retrait TUI
+- [x] 4.2 Portabilité Windows (make dist) + retrait TUI
   - ID: T-012
   - Requirement(s): FR-010
   - Design: FR-010 + Component 1 (portabilité shell)
@@ -147,7 +147,7 @@ Design: .specs/tdp-cli/design.md
     - Tester `make` (Linux) + `make dist` (Windows).
   - Validation: `make` (Linux) OK ; `make dist` (Windows) → `tdp.exe` + `portaudio.dll` ; `./tdp.exe` lance le shell ; `record`+Enter produit un WAV sous Windows.
 
-- [ ] 4.3 Tests script + Valgrind final + README
+- [x] 4.3 Tests script + Valgrind final + README
   - ID: T-013
   - Requirement(s): FR-001
   - Design: Testing Strategy
