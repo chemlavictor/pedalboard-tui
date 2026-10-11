@@ -66,10 +66,20 @@ WIN_CFLAGS  := -std=c11 -O2 -Wall -Wextra -I$(INC_DIR)
 WIN_LDLIBS  := -lportaudio -lm
 
 windows: $(WIN_TARGET)
-$(WIN_TARGET): $(WIN_SRCS:$(SRC_DIR)/%.c=$(BUILD)/win_%.o)
+$(WIN_TARGET): $(WIN_OBJS)
 	@mkdir -p $(BUILD)
 	$(CC) $(WIN_CFLAGS) -o $@ $(WIN_OBJS) $(WIN_LDLIBS)
-$(BUILD)/win_%: $(SRC_DIR)/%.c | $(BUILD)
+
+# Regle explicite par source (evite le pattern ambigu win_%%).
+$(BUILD)/win_main.o:    $(SRC_DIR)/main.c      | $(BUILD)
+	$(CC) $(WIN_CFLAGS) -c $< -o $@
+$(BUILD)/win_audio.o:   $(SRC_DIR)/audio.c     | $(BUILD)
+	$(CC) $(WIN_CFLAGS) -c $< -o $@
+$(BUILD)/win_dsp.o:     $(SRC_DIR)/dsp.c       | $(BUILD)
+	$(CC) $(WIN_CFLAGS) -c $< -o $@
+$(BUILD)/win_params.o:  $(SRC_DIR)/params.c    | $(BUILD)
+	$(CC) $(WIN_CFLAGS) -c $< -o $@
+$(BUILD)/win_ui_windows.o: $(SRC_DIR)/ui_windows.c | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
 
 # Assembler dist/ (tdp.exe + portaudio.dll + README). DLL cherchée dans le toolchain.
