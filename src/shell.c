@@ -154,6 +154,7 @@ static int cmd_help(int argc, char **argv) {
     "  s               (alias de status)\n"
     "  test          Accordeur : note + cents en continu ('q'/Entree = arreter, Ctrl+C = quitter)\n"
     "  test_out      Test des sorties : joue un bip sur chaque device (pour identifier le bon)\n"
+    "  test_out <API> Test des sorties filtre par API (ex: test_out WASAPI)\n"
     "  watch           Affichage continu du niveau (on/off)\n"
     "  pedals          Liste les pedales disponibles\n"
     "  info <nom>      Details d'une pedale (params, min/max/defaut)\n"
@@ -559,10 +560,10 @@ static int cmd_test(int argc, char **argv) {
   return 0;
 }
 
-/* Test des sorties audio : joue un bip sur chaque device. */
+/* Test des sorties audio : joue un bip sur chaque device (option: filtre API). */
 static int cmd_test_out(int argc, char **argv) {
-  (void)argc; (void)argv;
-  devtest_test_outputs();
+  const char *api_filter = (argc >= 2) ? argv[1] : NULL;
+  devtest_test_outputs(api_filter);
   return 0;
 }
 
@@ -878,6 +879,11 @@ static int readline_tdp(char *buf, int bufsz) {
         for (int i = 0; all[i].name && np < 15; ++i) ped_cands[np++] = all[i].name;
         ped_cands[np] = NULL;
         cands = ped_cands;
+      } else if (strcmp(first, "test_out") == 0) {
+        /* Complete les noms d'API audio (WASAPI, MME, DirectSound...). */
+        static const char *api_cands[16];
+        devtest_list_apis(api_cands, 15);
+        cands = api_cands;
       } else {
         /* 1er mot : complete les commandes. */
         static const char *cmd_cands[32];
