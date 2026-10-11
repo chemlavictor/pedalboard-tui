@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TDP — Terminal Distortion Pedal</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a1a;
+      color: #0f0;
+      padding: 20px;
+    }
+    h1 {
+      color: #0f0;
+      margin-bottom: 10px;
+      font-size: 1.5em;
+    }
+    .subtitle {
+      color: #888;
+      margin-bottom: 20px;
+      font-size: 0.9em;
+    }
+    #output {
+      background: #000;
+      border: 1px solid #0f0;
+      padding: 15px;
+      height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-size: 0.9em;
+      margin-bottom: 15px;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+    }
+    .prompt {
+      color: #0f0;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+    #cmd {
+      flex: 1;
+      background: #000;
+      border: 1px solid #0f0;
+      color: #0f0;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 1em;
+    }
+    #cmd:focus {
+      outline: none;
+      border-color: #0f0;
+    }
+    .history {
+      margin-top: 15px;
+      color: #888;
+      font-size: 0.8em;
+    }
+    .history span {
+      color: #0f0;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .history span:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>TDP — Terminal Distortion Pedal</h1>
+  <div class="subtitle">Shell web — exécute les commandes TDP via le navigateur</div>
+
+  <div id="output">TDP Web — tape une commande ci-dessous (ex: help, pedals, load son_metal.tdp)</div>
+
+  <div class="input-row">
+    <span class="prompt">tdp&gt;</span>
+    <input type="text" id="cmd" placeholder="tape une commande (ex: help)" autocomplete="off">
+  </div>
+
+  <div class="history" id="history"></div>
+
+  <script>
+    const output = document.getElementById("output");
+    const cmdInput = document.getElementById("cmd");
+    const historyDiv = document.getElementById("history");
+    let history = [];
+    let histIndex = -1;
+
+    function appendOutput(text) {
+      output.textContent += "\n" + text;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    async function sendCmd(cmd) {
+      if (!cmd) return;
+      appendOutput("tdp> " + cmd);
+      // Ajoute à l'historique.
+      if (history[history.length - 1] !== cmd) {
+        history.push(cmd);
+        if (history.length > 32) history.shift();
+        renderHistory();
+      }
+      histIndex = -1;
+
+      try {
+        const resp = await fetch("/cmd", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cmd: cmd }),
+        });
+        const data = await resp.json();
+        appendOutput(data.output || "(pas de sortie)");
+      } catch (e) {
+        appendOutput("(erreur : " + e.message + ")");
+      }
+    }
+
+    function renderHistory() {
+      historyDiv.innerHTML = "historique : " + history
+        .slice(-8)
+        .map(c => `<span onclick="cmdInput.value='${c.replace(/'/g, "\\'")}'">${c}</span>`)
+        .join("");
+    }
+
+    cmdInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const cmd = cmdInput.value.trim();
+        cmdInput.value = "";
+        sendCmd(cmd);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (history.length > 0) {
+          if (histIndex === -1) histIndex = history.length - 1;
+          else if (histIndex > 0) histIndex--;
+          cmdInput.value = history[histIndex];
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (histIndex !== -1) {
+          if (histIndex < history.length - 1) histIndex++;
+          else {
+            histIndex = -1;
+            cmdInput.value = "";
+          }
+          if (histIndex !== -1) cmdInput.value = history[histIndex];
+        }
+      }
+    });
+
+    // Vérifie que le serveur est en ligne.
+    fetch("/status")
+      .then(r => r.json())
+      .then(d => {
+        if (!d.exists) {
+          appendOutput("ATTENTION : binaire TDP introuvable (" + d.tdp_bin + "). Lance 'make' d'abord.");
+        }
+      })
+      .catch(() => {
+        appendOutput("ATTENTION : serveur TDP injoignable.");
+      });
+  </script>
+</body>
+</html>
