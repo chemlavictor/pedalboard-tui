@@ -95,6 +95,7 @@ static struct { const char *name; cmd_fn fn; } g_cmds[] = {
   { "info",   cmd_info },
   { "load",   cmd_load },
   { "chain",  cmd_chain },
+  { "ls",     cmd_chain },   /* alias de chain */
   { "reset",  cmd_reset },
   { "in",     cmd_in },
   { "out",    cmd_out },
@@ -102,6 +103,7 @@ static struct { const char *name; cmd_fn fn; } g_cmds[] = {
   { "stop",   cmd_stop },
   { "record", cmd_record },
   { "status", cmd_status },
+  { "s",      cmd_status },  /* alias de status */
   { "watch",  cmd_watch },
 };
 static const int N_CMDS = (int)(sizeof g_cmds / sizeof g_cmds[0]);
@@ -126,9 +128,11 @@ static int cmd_help(int argc, char **argv) {
     "  record          Enregistre le signal (post-pedales)\n"
     "  <Entree>        Arrete l'enregistrement + sauvegarde WAV horodate\n"
     "  status          Snapshot du niveau (RMS/peak in/out, etat)\n"
+    "  s               (alias de status)\n"
     "  watch           Affichage continu du niveau (on/off)\n"
     "  pedals          Liste les pedales disponibles\n"
     "  info <nom>      Details d'une pedale (params, min/max/defaut)\n"
+    "  ls              (alias de chain)\n"
     "  reset           Reset les params de la chaine aux defauts\n"
     "  help            Cette aide\n"
     "  quit            Quitter\n"
@@ -607,23 +611,130 @@ static void cmd_names_list(const char **out) {
   out[i] = NULL;
 }
 
-/* Lit une ligne avec auto-completion. Retourne 0 si ok, -1 si EOF.
- * Tab complete ; Backspace efface ; Entree valide. */
+/* ------------------------------------------------------------------ */
+/* Historique des commandes (flèches haut/bas)                          */
+/* ------------------------------------------------------------------ */
+#define HIST_MAX 32
+static char g_hist[HIST_MAX][LINE_MAX];
+static int g_hist_n = 0;     /* nb d'entrees */
+static int g_hist_pos = -1;  /* -1 = pas en navigation */
+
+/* Ajoute une ligne non-vide a l'historique. */
+static void hist_add(const char *line) {
+  if (!line[0]) return;
+  if (g_hist_n > 0 && strcmp(g_hist[g_hist_n - 1], line) == 0) return;
+  int cl = (int)strlen(line);
+  if (cl >= LINE_MAX) cl = LINE_MAX - 1;
+  if (g_hist_n < HIST_MAX) {
+    memcpy(g_hist[g_hist_n], line, (size_t)cl);
+    g_hist[g_hist_n][cl] = '\0';
+    g_hist_n++;
+  } else {
+    memmove(&g_hist[0], &g_hist[1], (HIST_MAX - 1) * sizeof g_hist[0]);
+    memcpy(g_hist[HIST_MAX - 1], line, (size_t)cl);
+    g_hist[HIST_MAX - 1][cl] = '\0';
+  }
+}
+
+/* Re-affiche la ligne (apres effacement) pour la navigation historique. */
+static void redraw_line(const char *buf, int len) {
+  printf("\r");
+  for (int i = 0; i < len + 10; ++i) printf(" ");
+  printf("\rtdp> %.*s", len, buf);
+  fflush(stdout);
+}
+
+/* Lit une ligne avec auto-completion + historique. Retourne :
+ *  0 = ok (ligne validee), -1 = EOF, -2 = Ctrl+C (quit). */
 static int readline_tdp(char *buf, int bufsz) {
   int len = 0;
+  buf[0] = '\0';
   for (;;) {
     int c = tdp_getch();
     if (c == EOF) return -1;
+    if (c == 3) { /* Ctrl+C : quit */
+      printf("\n");
+      return -2;
+    }
     if (c == '\n' || c == '\r') {
       buf[len] = '\0';
       printf("\n");
+      hist_add(buf);
+      g_hist_pos = -1;
       return 0;
     }
     if (c == 127 || c == 8) { /* Backspace */
       if (len > 0) {
         --len;
+        buf[len] = '\0';
         printf("\b \b");
         fflush(stdout);
+      }
+      continue;
+    }
+    if (c == 200 || c == 72) { /* Fleche haut (Windows=200, Linux=27 sequence) */
+      /* Navigation historique vers le passe. */
+      if (g_hist_n > 0) {
+        if (g_hist_pos == -1) {
+          /* Sauvegarde la ligne courante et va a la derniere. */
+          g_hist_pos = g_hist_n - 1;
+        } else if (g_hist_pos > 0) {
+          --g_hist_pos;
+        }
+        int hl = (int)strlen(g_hist[g_hist_pos]);
+        if (hl >= bufsz) hl = bufsz - 1;
+        memcpy(buf, g_hist[g_hist_pos], (size_t)hl);
+        buf[hl] = '\0';
+        len = hl;
+        redraw_line(buf, len);
+      }
+      continue;
+    }
+    if (c == 201 || c == 80) { /* Fleche bas (Windows=201, Linux=80) */
+      /* Navigation historique vers le present. */
+      if (g_hist_pos != -1) {
+        if (g_hist_pos < g_hist_n - 1) {
+          ++g_hist_pos;
+          int hl = (int)strlen(g_hist[g_hist_pos]);
+          if (hl >= bufsz) hl = bufsz - 1;
+          memcpy(buf, g_hist[g_hist_pos], (size_t)hl);
+          buf[hl] = '\0';
+          len = hl;
+        } else {
+          /* Derniere : vide la ligne. */
+          g_hist_pos = -1;
+          len = 0;
+          buf[0] = '\0';
+        }
+        redraw_line(buf, len);
+      }
+      continue;
+    }
+    if (c == 27) { /* ESC : debut d'une sequence fleche (Linux) */
+      /* Lit la sequence [ A / [ B. */
+      int c1 = tdp_getch(), c2 = tdp_getch();
+      (void)c1; /* '[ */
+      if (c2 == 'A') { /* haut */
+        if (g_hist_n > 0) {
+          if (g_hist_pos == -1) g_hist_pos = g_hist_n - 1;
+          else if (g_hist_pos > 0) --g_hist_pos;
+          int hl = (int)strlen(g_hist[g_hist_pos]);
+          if (hl >= bufsz) hl = bufsz - 1;
+          memcpy(buf, g_hist[g_hist_pos], (size_t)hl);
+          buf[hl] = '\0'; len = hl;
+          redraw_line(buf, len);
+        }
+      } else if (c2 == 'B') { /* bas */
+        if (g_hist_pos != -1) {
+          if (g_hist_pos < g_hist_n - 1) {
+            ++g_hist_pos;
+            int hl = (int)strlen(g_hist[g_hist_pos]);
+            if (hl >= bufsz) hl = bufsz - 1;
+            memcpy(buf, g_hist[g_hist_pos], (size_t)hl);
+            buf[hl] = '\0'; len = hl;
+          } else { g_hist_pos = -1; len = 0; buf[0] = '\0'; }
+          redraw_line(buf, len);
+        }
       }
       continue;
     }
@@ -756,7 +867,9 @@ void shell_run(const char *script_path) {
     if (interactive) {
       printf("tdp> ");
       fflush(stdout);
-      if (readline_tdp(line, sizeof line) == -1) break; /* EOF (Ctrl-D) */
+      int rc = readline_tdp(line, sizeof line);
+      if (rc == -1) break;      /* EOF (Ctrl-D) */
+      if (rc == -2) break;      /* Ctrl+C : quit */
     } else {
       if (!fgets(line, sizeof line, f)) break; /* fin du script */
     }
