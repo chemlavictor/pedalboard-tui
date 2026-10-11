@@ -88,11 +88,13 @@ $(BUILD)/win_ui_windows.o: $(SRC_DIR)/ui_windows.c | $(BUILD)
 dist: windows
 	@mkdir -p dist
 	@cp $(WIN_TARGET) dist/tdp.exe
-	@for d in /mingw64/bin /mingw32/bin /ucrt64/bin; do \
-	  if [ -f $$d/libportaudio-0.dll ]; then cp $$d/libportaudio-0.dll dist/portaudio.dll; break; \
-	  elif [ -f $$d/portaudio.dll ]; then cp $$d/portaudio.dll dist/; break; fi; \
-	done
+	@copied=0; \
+	for f in /mingw64/bin/libportaudio-0.dll /mingw32/bin/libportaudio-0.dll /ucrt64/bin/libportaudio-0.dll \
+	         /mingw64/bin/portaudio.dll /mingw32/bin/portaudio.dll /ucrt64/bin/portaudio.dll; do \
+	  if [ -f "$$f" ]; then cp "$$f" dist/portaudio.dll; echo "  DLL: $$f -> dist/portaudio.dll"; copied=1; break; fi; \
+	done; \
+	if [ "$$copied" = "0" ]; then echo "  ATTENTION: portaudio.dll introuvable. Copie-la manuellement dans dist/"; fi
 	@cp README.md dist/README.md
-	@echo "dist/ prête : tdp.exe + portaudio.dll + README.md (version $(GIT_HASH))"
+	@echo "dist/ prete : tdp.exe + portaudio.dll + README.md (version $(GIT_HASH))"
 
 -include $(DEPS)
