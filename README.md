@@ -115,6 +115,18 @@ volume level=0.8
 
 Charge : `tdp> load guitar_zombies_metal.tdp` (Tab complète les `.tdp`).
 
+### Presets inclus
+
+| Fichier | Son |
+|---------|-----|
+| `son_metal.tdp` | Metal / chug (gain élevé, tight) |
+| `son_rock.tdp` | Rock / crunch (gain moyen) |
+| `son_clean.tdp` | Clean (pas de distorsion) |
+| `son_jazz.tdp` | Jazz (gain faible, doux) |
+| `son_blues.tdp` | Blues (legato, gate) |
+
+> Un **skill** `.pi/skills/tdp-presets/` aide un LLM à générer un `.tdp` à partir d'une description de son (ex. « son metal »).
+
 ## Mode script (automatisation)
 
 `./tdp.exe script.txt` exécute les commandes ligne par ligne, sans prompt, puis se termine.

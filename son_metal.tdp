@@ -1,0 +1,5 @@
+# Son metal / chug : gain élevé, tight, booster qui pumpe
+booster level=2.0
+distortion gain=0.7
+noise_gate threshold=-40
+volume level=0.8

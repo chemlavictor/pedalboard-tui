@@ -1,0 +1,3 @@
+# Son clean : pas de distorsion, juste gain + volume
+booster level=1.2
+volume level=0.9

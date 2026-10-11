@@ -1,0 +1,5 @@
+# Son blues : legato, gain modéré, gate pour couper les notes
+booster level=1.6
+distortion gain=0.35
+noise_gate threshold=-50
+volume level=0.8

@@ -1,0 +1,5 @@
+# Son rock / crunch : gain moyen
+booster level=1.5
+distortion gain=0.45
+noise_gate threshold=-45
+volume level=0.8
