@@ -361,6 +361,18 @@ static int cmd_reset(int argc, char **argv) {
 static int g_in_dev = -1;  /* -1 = defaut */
 static int g_out_dev = -1;
 
+/* Copie un nom de device en remplaçant les caracteres de controle par des
+ * espaces, pour afficher sur une seule ligne. */
+static void safe_name(const char *in, char *out, int outsz) {
+  int n = 0;
+  for (int i = 0; in[i] && n < outsz - 1; ++i) {
+    char c = in[i];
+    if (c == '\n' || c == '\r' || c == '\t') c = ' ';
+    out[n++] = c;
+  }
+  out[n] = '\0';
+}
+
 static int cmd_in(int argc, char **argv) {
   if (argc >= 2) {
     g_in_dev = atoi(argv[1]);
@@ -375,7 +387,9 @@ static int cmd_in(int argc, char **argv) {
   for (int i = 0; i < n; ++i) {
     if (!devs[i].is_input) continue;
     const char *mark = (devs[i].id == g_in_dev) ? "> " : "  ";
-    printf("%s[%d] %s  (%s)\n", mark, devs[i].id, devs[i].name, devs[i].api);
+    char name[128];
+    safe_name(devs[i].name, name, sizeof name);
+    printf("%s[%2d]  [%-12s]  %s\n", mark, devs[i].id, devs[i].api, name);
   }
   return 0;
 }
@@ -393,7 +407,9 @@ static int cmd_out(int argc, char **argv) {
   for (int i = 0; i < n; ++i) {
     if (!devs[i].is_output) continue;
     const char *mark = (devs[i].id == g_out_dev) ? "> " : "  ";
-    printf("%s[%d] %s  (%s)\n", mark, devs[i].id, devs[i].name, devs[i].api);
+    char name[128];
+    safe_name(devs[i].name, name, sizeof name);
+    printf("%s[%2d]  [%-12s]  %s\n", mark, devs[i].id, devs[i].api, name);
   }
   return 0;
 }

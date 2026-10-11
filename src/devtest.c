@@ -17,6 +17,18 @@
 static float g_bip[BIP_SAMPLES];
 static unsigned g_bip_pos = 0;
 
+/* Copie un nom de device en remplaçant les caracteres de controle
+ * (\n, \r, \t) par des espaces, pour afficher sur une seule ligne. */
+static void safe_name(const char *in, char *out, int outsz) {
+  int n = 0;
+  for (int i = 0; in[i] && n < outsz - 1; ++i) {
+    char c = in[i];
+    if (c == '\n' || c == '\r' || c == '\t') c = ' ';
+    out[n++] = c;
+  }
+  out[n] = '\0';
+}
+
 /* Genere un bip 440 Hz, amplitude 0.5. */
 static void gen_bip(float *buf, int n, double sr) {
   for (int i = 0; i < n; ++i) {
@@ -68,7 +80,10 @@ int devtest_test_outputs(void) {
       if (api_info) api_name = api_info->name;
     }
 
-    printf("  [%2d] %s  (%s) ... ", i, info->name, api_name);
+    /* Nom de device sur une seule ligne. */
+    char name[128];
+    safe_name(info->name, name, sizeof name);
+    printf("  [%2d]  [%-12s]  %s ... ", i, api_name, name);
     fflush(stdout);
 
     /* Parameters de sortie : mono, 48 kHz, float32. */
