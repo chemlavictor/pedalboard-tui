@@ -1,25 +1,19 @@
 # .specs/config.yaml — project-wide spec workflow config (free-form, agent-interpreted)
-#
-# This file is read at the start of every spec workflow action (brainstorm,
-# spec init, status, validate, task check, implementation). Edits take effect
-# on the next action. The schema is intentionally free-form: any keys you add
-# are surfaced to the spec agent as project context.
-
 project:
-  goal: "Short statement of what this project is for."
+  goal: "Terminal Distortion Pedal (TDP) — chaîne de pédales audio temps réel en C11, pilotée par CLI/shell de commandes."
   tech_stack:
-    - "language/runtime"
-    - "framework"
-    - "datastore"
+    - "C11 (GCC/Clang, atomics)"
+    - "PortAudio (audio temps réel)"
+    - "ncurses (V1 TUI, à remplacer par CLI)"
+    - "WAV (enregistrement, encodeur maison)"
 
 principles:
-  tdd: false # write tests first when true
-  no_comments: false # omit code comments when true
-  # add any other principles your team wants the agent to honor
+  tdd: false
+  no_comments: false
+  rt_constraints: "Le callback audio n'utilise ni malloc/free, ni I/O, ni locks. stdatomic seulement."
+  ui_style: "CLI shell de commandes (prompt tdp>), pas de TUI. Compatible Windows + Linux."
 
 hooks:
   after_task:
-    - command: "npm test"
-      auto: false # true = agent runs it after each task; false = remind the user
-    # - command: "npm run lint"
-    #   auto: true
+    - command: "make test"
+      auto: false
