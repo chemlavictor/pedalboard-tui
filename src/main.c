@@ -11,6 +11,10 @@
 #include <string.h>
 #include <math.h>
 
+#ifndef TDP_GIT_HASH
+#define TDP_GIT_HASH "nogit"
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #include <wincon.h>
@@ -120,8 +124,8 @@ static void render(void) {
 
   /* Pied de page (FR-028) : info systeme + rappel des raccourcis. */
   char foot[128];
-  snprintf(foot, sizeof foot, "%ld Hz - buffer %ld - PortAudio %s",
-           sr, fb, pa_ok ? "OK" : "ERREUR");
+  snprintf(foot, sizeof foot, "%ld Hz - buffer %ld - PortAudio %s - v%s",
+           sr, fb, pa_ok ? "OK" : "ERREUR", TDP_GIT_HASH);
   ui_text(ui_lines() - 2, 0, foot);
   ui_text(ui_lines() - 1, 0,
           "SP:bypass M:mute Up/Dn:param Lt/Rt:+/- I:in O:out R:reset q:quit");
