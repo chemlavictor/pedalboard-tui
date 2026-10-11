@@ -109,6 +109,7 @@ static int cmd_test_out(int argc, char **argv);
  * seront branchées dans les phases suivantes (audio.c / wav.c). */
 static struct { const char *name; cmd_fn fn; } g_cmds[] = {
   { "help",   cmd_help },
+  { "?",      cmd_help },    /* alias de help */
   { "quit",   cmd_quit },
   { "exit",   cmd_quit },
   { "pedals", cmd_pedals },
@@ -374,7 +375,7 @@ static int cmd_in(int argc, char **argv) {
   for (int i = 0; i < n; ++i) {
     if (!devs[i].is_input) continue;
     const char *mark = (devs[i].id == g_in_dev) ? "> " : "  ";
-    printf("%s[%d] %s\n", mark, devs[i].id, devs[i].name);
+    printf("%s[%d] %s  (%s)\n", mark, devs[i].id, devs[i].name, devs[i].api);
   }
   return 0;
 }
@@ -392,7 +393,7 @@ static int cmd_out(int argc, char **argv) {
   for (int i = 0; i < n; ++i) {
     if (!devs[i].is_output) continue;
     const char *mark = (devs[i].id == g_out_dev) ? "> " : "  ";
-    printf("%s[%d] %s\n", mark, devs[i].id, devs[i].name);
+    printf("%s[%d] %s  (%s)\n", mark, devs[i].id, devs[i].name, devs[i].api);
   }
   return 0;
 }

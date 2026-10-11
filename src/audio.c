@@ -211,6 +211,18 @@ int audio_list_devices(tdp_device *out) {
     out[n].name[TDP_DEVICE_NAME_LEN - 1] = '\0';
     out[n].is_input = (info->maxInputChannels > 0);
     out[n].is_output = (info->maxOutputChannels > 0);
+    /* Nom du host API (MME, DirectSound, WASAPI...). */
+    if (info->hostApi >= 0) {
+      const PaHostApiInfo *api_info = Pa_GetHostApiInfo(info->hostApi);
+      if (api_info) {
+        strncpy(out[n].api, api_info->name, TDP_DEVICE_API_LEN - 1);
+        out[n].api[TDP_DEVICE_API_LEN - 1] = '\0';
+      } else {
+        strcpy(out[n].api, "?");
+      }
+    } else {
+      strcpy(out[n].api, "?");
+    }
     ++n;
   }
   return n;

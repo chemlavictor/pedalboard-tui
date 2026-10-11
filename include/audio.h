@@ -9,10 +9,12 @@
 /* Nombre max de périphériques listés. */
 #define TDP_MAX_DEVICES 32
 #define TDP_DEVICE_NAME_LEN 64
+#define TDP_DEVICE_API_LEN 16
 
 typedef struct {
   int id;
   char name[TDP_DEVICE_NAME_LEN];
+  char api[TDP_DEVICE_API_LEN]; /* nom du host API (MME, DirectSound, WASAPI...) */
   bool is_input;
   bool is_output;
 } tdp_device;
