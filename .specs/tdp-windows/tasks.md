@@ -1,7 +1,7 @@
 # TDP Windows — version compilée (console Windows native, sans ncurses) Tasks
 
 Spec: `tdp-windows`
-Status: implementation-in-progress
+Status: implementation-complete
 Created: 2026-10-11  
 Brainstorm: `./brainstorm.md`
 Requirements: `./requirements.md`
@@ -71,10 +71,10 @@ Only include implementation tasks after requirements and design are accepted. Ke
 
 ## Verification Checklist
 
-- [ ] Requirements IDs are referenced by tasks.
-- [ ] Design testing strategy is represented by tasks.
-- [ ] Each task has a clear validation command or manual check.
-- [ ] Rollback/migration tasks are included when applicable.
+- [x] Requirements IDs are referenced by tasks.
+- [x] Design testing strategy is represented by tasks.
+- [x] Each task has a clear validation command or manual check.
+- [x] Rollback/migration tasks are included when applicable.
 
 ## Execution Notes
 
