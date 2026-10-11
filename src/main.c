@@ -27,6 +27,13 @@
 enum { SEL_GAIN = 0, SEL_MASTER = 1 };
 static int g_selected = SEL_GAIN;
 
+/* Menu de sélection de périphérique audio. */
+enum { MENU_NONE = 0, MENU_INPUT = 1, MENU_OUTPUT = 2 };
+static int g_menu = MENU_NONE;
+static tdp_device g_devices[TDP_MAX_DEVICES];
+static int g_n_devices = 0;
+static int g_menu_idx = 0;
+
 static volatile sig_atomic_t g_signal_quit = 0;
 
 #ifndef _WIN32
@@ -117,7 +124,7 @@ static void render(void) {
            sr, fb, pa_ok ? "OK" : "ERREUR");
   ui_text(ui_lines() - 2, 0, foot);
   ui_text(ui_lines() - 1, 0,
-          "SP:bypass M:mute Up/Dn:param Lt/Rt:+/- R:reset q:quit");
+          "SP:bypass M:mute Up/Dn:param Lt/Rt:+/- I:in O:out R:reset q:quit");
 
   /* Titre fenêtre (FR-007) */
   char title[128];
@@ -126,6 +133,31 @@ static void render(void) {
   ui_title(title);
 
   ui_frame();
+}
+
+/* Affiche le menu de selection de peripherique audio. */
+static void render_menu(void) {
+  if (g_menu == MENU_NONE) return;
+  const char *label = (g_menu == MENU_INPUT) ? "ENTREE" : "SORTIE";
+  ui_color(UI_COLOR_BYPASS, 1);
+  ui_text(0, 0, "--- Selection de peripherique ---");
+  ui_color(UI_COLOR_BYPASS, 0);
+  ui_text(1, 0, label);
+
+  int row = 2;
+  for (int i = 0; i < g_n_devices && row < ui_lines() - 3; ++i) {
+    tdp_device *d = &g_devices[i];
+    bool ok = (g_menu == MENU_INPUT) ? d->is_input : d->is_output;
+    if (!ok) continue;
+    const char *mark = (i == g_menu_idx) ? "> " : "  ";
+    char line[TDP_DEVICE_NAME_LEN + 8];
+    snprintf(line, sizeof line, "%s[%d] %s", mark, d->id, d->name);
+    ui_text(row, 0, line);
+    ++row;
+  }
+  if (row == 2) ui_text(2, 0, "(aucun peripherique)");
+
+  ui_text(ui_lines() - 2, 0, "Up/Dn:choisir  SP:confirmer  q:annuler");
 }
 
 int main(void) {
@@ -161,12 +193,56 @@ int main(void) {
   bool quit = false;
   while (!quit) {
     ui_key key = ui_poll_key();
+
+    /* ---- Mode MENU (selection de peripherique) ---- */
+    if (g_menu != MENU_NONE) {
+      switch (key) {
+        case UI_KEY_UP:
+          if (g_menu_idx > 0) --g_menu_idx;
+          break;
+        case UI_KEY_DOWN:
+          if (g_menu_idx < g_n_devices - 1) ++g_menu_idx;
+          break;
+        case UI_KEY_SPACE: {
+          /* Confirmer : re-ouvre le stream avec le device choisi. */
+          tdp_device *d = &g_devices[g_menu_idx];
+          if (g_menu == MENU_INPUT) audio_set_devices(d->id, -1);
+          else audio_set_devices(-1, d->id);
+          g_menu = MENU_NONE;
+          break;
+        }
+        case UI_KEY_Q:
+        case UI_KEY_I:
+        case UI_KEY_O:
+          g_menu = MENU_NONE; /* annuler */
+          break;
+        default: break;
+      }
+      if (g_signal_quit) quit = true;
+      render();
+      render_menu();
+      ui_frame();
+      ui_sleep_ms(20);
+      continue;
+    }
+
+    /* ---- Mode NORMAL ---- */
     switch (key) {
       case UI_KEY_SPACE: /* BYPASS */
         atomic_store_explicit(&P.bypass, !atomic_load_explicit(&P.bypass, memory_order_relaxed), memory_order_relaxed);
         break;
       case UI_KEY_M: /* MUTE */
         atomic_store_explicit(&P.mute, !atomic_load_explicit(&P.mute, memory_order_relaxed), memory_order_relaxed);
+        break;
+      case UI_KEY_I: /* menu entree */
+        g_n_devices = audio_list_devices(g_devices);
+        g_menu_idx = 0;
+        g_menu = MENU_INPUT;
+        break;
+      case UI_KEY_O: /* menu sortie */
+        g_n_devices = audio_list_devices(g_devices);
+        g_menu_idx = 0;
+        g_menu = MENU_OUTPUT;
         break;
       case UI_KEY_UP:
       case UI_KEY_DOWN: /* cycle param */

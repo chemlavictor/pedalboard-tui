@@ -18,6 +18,8 @@ typedef enum {
   UI_KEY_SPACE,
   UI_KEY_M,
   UI_KEY_R,
+  UI_KEY_I,   /* menu entrée audio */
+  UI_KEY_O,   /* menu sortie audio */
   UI_KEY_Q
 } ui_key;
 

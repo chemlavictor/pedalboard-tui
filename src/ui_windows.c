@@ -110,6 +110,8 @@ ui_key ui_poll_key(void) {
       case 'M':      return UI_KEY_M;
       case 'R':      return UI_KEY_R;
       case 'Q':      return UI_KEY_Q;
+      case 'I':      return UI_KEY_I;
+      case 'O':      return UI_KEY_O;
       default:       break;
     }
   }

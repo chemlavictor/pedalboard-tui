@@ -35,7 +35,6 @@ static int audio_callback(const void *in, void *out, unsigned long n,
 
   dsp_process(in_buf, out_buf, n, G, V, bypass, mute, sr, &g_vu);
 
-  /* Publice les VU pour le thread UI. */
   atomic_store_explicit(&P.vu_in_rms, g_vu.in_rms, memory_order_relaxed);
   atomic_store_explicit(&P.vu_in_peak, g_vu.in_peak, memory_order_relaxed);
   atomic_store_explicit(&P.vu_out_rms, g_vu.out_rms, memory_order_relaxed);
@@ -44,12 +43,13 @@ static int audio_callback(const void *in, void *out, unsigned long n,
   return paContinue;
 }
 
-static bool try_open(double sr, long frames) {
+/* Ouvre un stream mono in+out avec les devices choisis (-1 = défaut). */
+static bool try_open(double sr, long frames, int in_dev, int out_dev) {
   PaStreamParameters inp, outp;
   memset(&inp, 0, sizeof inp);
   memset(&outp, 0, sizeof outp);
-  inp.device = Pa_GetDefaultInputDevice();
-  outp.device = Pa_GetDefaultOutputDevice();
+  inp.device = (in_dev >= 0) ? (PaDeviceIndex)in_dev : Pa_GetDefaultInputDevice();
+  outp.device = (out_dev >= 0) ? (PaDeviceIndex)out_dev : Pa_GetDefaultOutputDevice();
   inp.channelCount = 1;
   outp.channelCount = 1;
   inp.sampleFormat = paFloat32;
@@ -79,22 +79,17 @@ bool audio_start(void) {
 
   dsp_vu_reset(&g_vu);
 
-  double req_sr = 0.0;
-  long req_fb = 0;
+  double req_sr = 48000.0; long req_fb = 256;
   bool opened = false;
-  req_sr = 48000.0; req_fb = 256;
-  if (try_open(req_sr, req_fb)) opened = true;
-  if (!opened) { req_sr = 44100.0; req_fb = 256; if (try_open(req_sr, req_fb)) opened = true; }
-  if (!opened) { req_sr = 48000.0; req_fb = 128; if (try_open(req_sr, req_fb)) opened = true; }
+  if (try_open(48000.0, 256, -1, -1)) opened = true;
+  if (!opened) { req_sr = 44100.0; req_fb = 256; if (try_open(44100.0, 256, -1, -1)) opened = true; }
+  if (!opened) { req_sr = 48000.0; req_fb = 128; if (try_open(48000.0, 128, -1, -1)) opened = true; }
 
   if (!opened) {
     atomic_store_explicit(&P.pa_ok, false, memory_order_relaxed);
-    Pa_Terminate();
     return false;
   }
 
-  /* PortAudio garantit un framesPerBuffer non nul dans le callback ; on enregistre
-   * la valeur demandée (réelle ici). sr demandé = sr du stream full-duplex. */
   atomic_store_explicit(&P.sr, (long)req_sr, memory_order_relaxed);
   atomic_store_explicit(&P.frame_buffer, req_fb, memory_order_relaxed);
   atomic_store_explicit(&P.pa_ok, true, memory_order_relaxed);
@@ -108,5 +103,46 @@ void audio_stop(void) {
     g_stream = NULL;
   }
   atomic_store_explicit(&P.pa_ok, false, memory_order_relaxed);
-  Pa_Terminate();
+}
+
+int audio_list_devices(tdp_device *out) {
+  int n = 0;
+  int max = Pa_GetDeviceCount();
+  if (max < 0) return 0;
+  if (max > TDP_MAX_DEVICES) max = TDP_MAX_DEVICES;
+  for (int i = 0; i < max; ++i) {
+    const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
+    if (!info) continue;
+    out[n].id = i;
+    strncpy(out[n].name, info->name, TDP_DEVICE_NAME_LEN - 1);
+    out[n].name[TDP_DEVICE_NAME_LEN - 1] = '\0';
+    out[n].is_input = (info->maxInputChannels > 0);
+    out[n].is_output = (info->maxOutputChannels > 0);
+    ++n;
+  }
+  return n;
+}
+
+bool audio_set_devices(int in_id, int out_id) {
+  if (!g_stream) return false; /* faut un stream ouvert d'abord */
+
+  /* On ferme l'ancien, on rouvre avec les nouveaux devices. */
+  Pa_StopStream(g_stream);
+  Pa_CloseStream(g_stream);
+  g_stream = NULL;
+
+  double sr = (double)atomic_load_explicit(&P.sr, memory_order_relaxed);
+  long fb = atomic_load_explicit(&P.frame_buffer, memory_order_relaxed);
+
+  bool opened = try_open(sr, fb, in_id, out_id);
+  if (!opened) {
+    /* Fallback sur défaut si le device choisi échoue. */
+    opened = try_open(sr, fb, -1, -1);
+  }
+  if (!opened) {
+    atomic_store_explicit(&P.pa_ok, false, memory_order_relaxed);
+    return false;
+  }
+  atomic_store_explicit(&P.pa_ok, true, memory_order_relaxed);
+  return true;
 }

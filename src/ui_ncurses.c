@@ -52,6 +52,8 @@ ui_key ui_poll_key(void) {
     case ' ':          return UI_KEY_SPACE;
     case 'M': case 'm': return UI_KEY_M;
     case 'R': case 'r': return UI_KEY_R;
+    case 'I': case 'i': return UI_KEY_I;
+    case 'O': case 'o': return UI_KEY_O;
     case 'q': case 'Q': return UI_KEY_Q;
     case KEY_UP:       return UI_KEY_UP;
     case KEY_DOWN:     return UI_KEY_DOWN;
