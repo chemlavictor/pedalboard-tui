@@ -11,10 +11,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #ifdef _WIN32
-#include <windows.h> /* Sleep */
+#include <windows.h> /* Sleep, FindFirstFile */
 #include <conio.h>   /* _getch (codes bruts, Tab=9) */
 #else
 #include <time.h>    /* nanosleep (POSIX) */
+#include <dirent.h>  /* opendir/readdir */
+#include <sys/types.h>
 #endif
 
 /* Lecture d'un caractere brut (Tab=9, Backspace=8/127) :
@@ -555,6 +557,49 @@ static int try_complete(char *buf, int len, const char **cands) {
   return -1;
 }
 
+/* Liste les fichiers .tdp du dossier courant dans out (max max).
+ * Retourne le nombre trouve. Portable Windows (FindFirstFile) + POSIX (opendir).
+ * Les noms sont copies dans des buffers statiques (pas de malloc/fuite). */
+static int list_tdp_files(const char **out, int max) {
+  static char bufs[16][256]; /* buffers statiques pour les noms */
+  int n = 0;
+#ifdef _WIN32
+  WIN32_FIND_DATAA fd;
+  HANDLE h = FindFirstFileA("*.tdp", &fd);
+  if (h != INVALID_HANDLE_VALUE) {
+    do {
+      if (n < max && n < 16) {
+        int cl = (int)strlen(fd.cFileName);
+        if (cl > 255) cl = 255;
+        memcpy(bufs[n], fd.cFileName, (size_t)cl);
+        bufs[n][cl] = '\0';
+        out[n] = bufs[n];
+        ++n;
+      }
+    } while (FindNextFileA(h, &fd));
+    FindClose(h);
+  }
+#else
+  DIR *d = opendir(".");
+  if (d) {
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL && n < max && n < 16) {
+      if (strstr(e->d_name, ".tdp")) {
+        int cl = (int)strlen(e->d_name);
+        if (cl > 255) cl = 255;
+        memcpy(bufs[n], e->d_name, (size_t)cl);
+        bufs[n][cl] = '\0';
+        out[n] = bufs[n];
+        ++n;
+      }
+    }
+    closedir(d);
+  }
+#endif
+  out[n] = NULL;
+  return n;
+}
+
 /* Construit la liste des commandes (pour la completion du 1er mot). */
 static void cmd_names_list(const char **out) {
   int i = 0;
@@ -588,7 +633,12 @@ static int readline_tdp(char *buf, int bufsz) {
       int fi = 0;
       for (int i = 0; i < len && buf[i] != ' '; ++i) if (fi < 63) first[fi++] = buf[i];
       const char **cands = NULL;
-      if (strcmp(first, "info") == 0) {
+      if (strcmp(first, "load") == 0) {
+        /* Complete les fichiers .tdp du dossier courant. */
+        static const char *file_cands[16];
+        list_tdp_files(file_cands, 15);
+        cands = file_cands;
+      } else if (strcmp(first, "info") == 0) {
         /* Complete les noms de pedales. */
         static const char *ped_cands[16];
         int np = 0;
