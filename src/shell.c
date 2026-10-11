@@ -13,8 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #ifdef _WIN32
-#include <windows.h> /* Sleep, FindFirstFile */
-#include <conio.h>   /* _getch (codes bruts, Tab=9) */
+#include <windows.h> /* Sleep, FindFirstFile, ReadConsoleInput */
 #else
 #include <time.h>    /* nanosleep (POSIX) */
 #include <dirent.h>  /* opendir/readdir */
@@ -22,11 +21,28 @@
 #include <sys/select.h> /* select (non-bloquant, tdp_key_available) */
 #endif
 
-/* Lecture d'un caractere brut (Tab=9, Backspace=8/127) :
- * Windows : _getch (conio.h) ; POSIX : getchar. */
+/* Lecture d'un caractere brut (Tab=9, Backspace=8/127, majuscules OK) :
+ * Windows : ReadConsoleInput (gere Shift/majuscules) ; POSIX : getchar. */
 static int tdp_getch(void) {
 #ifdef _WIN32
-  return _getch();
+  /* Utilise ReadConsoleInput pour gerer correctement les touches
+   * modifiees (Shift, Ctrl, Alt) et les majuscules. */
+  INPUT_RECORD ir;
+  DWORD nread = 0;
+  HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+  for (;;) {
+    if (!ReadConsoleInputA(h, &ir, 1, &nread) || nread == 0) return EOF;
+    if (ir.EventType == KEY_EVENT) {
+      if (!ir.Event.KeyEvent.bKeyDown) continue; /* ignore key-up */
+      /* Renvoie le caractère si possible. */
+      if (ir.Event.KeyEvent.uChar.AsciiChar != 0) {
+        return (int)ir.Event.KeyEvent.uChar.AsciiChar;
+      }
+      /* Sinon, renvoie le code virtuel (pour les touches speciales). */
+      return (int)ir.Event.KeyEvent.wVirtualKeyCode;
+    }
+    /* Autres types d'evenement : ignore. */
+  }
 #else
   return getchar();
 #endif
@@ -35,7 +51,9 @@ static int tdp_getch(void) {
 /* Retourne 1 s'il y a une touche en attente (non-bloquant), 0 sinon. */
 static int tdp_key_available(void) {
 #ifdef _WIN32
-  return _kbhit();
+  HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+  DWORD n = 0;
+  return (PeekConsoleInputA(h, NULL, 0, &n) && n > 0) ? 1 : 0;
 #else
   fd_set fds;
   struct timeval tv = {0, 0}; /* timeout 0 = non-bloquant */
@@ -794,7 +812,7 @@ static int readline_tdp(char *buf, int bufsz) {
       }
       continue;
     }
-    if (c == 200 || c == 72) { /* Fleche haut (Windows=200, Linux=27 sequence) */
+    if (c == 200 || c == 72 || c == 38) { /* Fleche haut (Windows _getch=200, ReadConsole=38, Linux=27 seq) */
       /* Navigation historique vers le passe. */
       if (g_hist_n > 0) {
         if (g_hist_pos == -1) {
@@ -812,7 +830,7 @@ static int readline_tdp(char *buf, int bufsz) {
       }
       continue;
     }
-    if (c == 201 || c == 80) { /* Fleche bas (Windows=201, Linux=80) */
+    if (c == 201 || c == 80 || c == 40) { /* Fleche bas (Windows _getch=201, ReadConsole=40, Linux=80) */
       /* Navigation historique vers le present. */
       if (g_hist_pos != -1) {
         if (g_hist_pos < g_hist_n - 1) {
