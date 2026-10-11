@@ -12,9 +12,15 @@ Pédale de distorsion numérique pilotée entièrement au clavier, avec une inte
 # ou : make && make run
 ```
 
-### Windows (natif, double-clic)
-1. **Compiler une fois** : double-cliquer **`build.bat`** (nécessite MSYS2 + gcc + PortAudio ; sinon il t'affiche les instructions).
-2. **Lancer** : double-cliquer **`run.bat`** → ouvre la TUI, où que tu sois dans l'arborescence.
+### Windows (natif)
+1. Installe **MSYS2** (https://www.msys2.org/) → par défaut `C:\msys64`.
+2. Ouvre le shell **« MSYS2 MINGW64 »** (menu démarrer), va dans le repo :
+   ```bash
+   cd /c/Users/utilisateur/Documents/pedalboard-tui
+   ./install_windows.sh   # installe gcc + PortAudio + compile dist/
+   ```
+   (ou, si MSYS2 est déjà prêt : `make dist`)
+3. **Lancer** : double-cliquer **`run.bat`** (ou `dist\tdp.exe`) → ouvre la TUI, où que tu sois.
 
 > Le code est le même ; seul le système de rendu change (console Windows / ncurses). Pas de chemin UNC, pas d'`Accès refusé` : `run.bat`/`run.sh` gèrent le dossier tout seuls.
 
