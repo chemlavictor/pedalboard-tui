@@ -61,7 +61,14 @@ int devtest_test_outputs(void) {
     const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
     if (!info || info->maxOutputChannels < 1) continue;
 
-    printf("  [%2d] %s ... ", i, info->name);
+    /* Nom du host API. */
+    const char *api_name = "?";
+    if (info->hostApi >= 0) {
+      const PaHostApiInfo *api_info = Pa_GetHostApiInfo(info->hostApi);
+      if (api_info) api_name = api_info->name;
+    }
+
+    printf("  [%2d] %s  (%s) ... ", i, info->name, api_name);
     fflush(stdout);
 
     /* Parameters de sortie : mono, 48 kHz, float32. */
