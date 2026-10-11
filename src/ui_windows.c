@@ -1,9 +1,11 @@
 /*
- * Implémentation UI console Windows (sans ncurses). (FR-004..FR-010, NFR-003/004)
+ * Implémentation UI console Windows (sans ncurses).
  * Les appels Windows sont confinés à ce fichier ; include/ui.h reste portable.
  *
- * Rendu : blocs Unicode █▓░ (UTF-16 via WriteConsoleW), couleurs ANSI
- * (Windows 10+, repli monochrome sinon), titre de fenêtre, double-buffer.
+ * Rendu : ASCII (jauges = # * -), couleurs ANSI (Windows 10+, repli monochrome),
+ * titre de fenêtre, double-buffer.
+ * Clavier : ReadConsoleInput (KEY_EVENT) — wVirtualKeyCode pour les flèches,
+ * uChar.AsciiChar pour les lettres.
  */
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -38,12 +40,7 @@ int ui_init(void) {
     g_lines = csbi.dwSize.Y;
   }
 
-  /* Mode raw sur l'entree : desactive echo + line buffer pour ReadConsole. */
-  DWORD mode = 0;
-  if (hIn && GetConsoleMode(hIn, &mode)) {
-    SetConsoleMode(hIn, mode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
-  }
-
+  /* Active le traitement ANSI (couleurs) si supporté (Windows 10+). */
   DWORD mode_out = 0;
   if (GetConsoleMode(hOut, &mode_out)) {
     if (SetConsoleMode(hOut, mode_out | ENABLE_VIRTUAL_TERMINAL_PROCESSING)) g_ansicolor = 1;
@@ -52,13 +49,6 @@ int ui_init(void) {
 }
 
 void ui_shutdown(void) {
-  /* Restaure le mode console normal. */
-  if (hIn) {
-    DWORD mode = 0;
-    if (GetConsoleMode(hIn, &mode)) {
-      SetConsoleMode(hIn, mode | ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
-    }
-  }
   if (g_ansicolor) {
     const char *r = "\x1b[0m";
     WriteConsoleA(hOut, r, (DWORD)strlen(r), NULL, NULL);
@@ -82,7 +72,7 @@ static void buf_put(int row, int col, const char *utf8) {
     if (p[0] < 0x80) n = 1;
     else if ((p[0] & 0xE0) == 0xC0) n = 2;
     else if ((p[0] & 0xF0) == 0xE0) n = 3;
-    else { n = 1; }
+    else n = 1;
     wchar_t w[2];
     int wn = MultiByteToWideChar(CP_UTF8, 0, (const char *)p, n, w, 2);
     if (wn > 0 && c < MAXW) g_buf[row][c++] = w[0];
@@ -110,25 +100,36 @@ void ui_title(const char *utf8) { SetConsoleTitleA(utf8); }
 ui_key ui_poll_key(void) {
   if (hIn == NULL) return UI_KEY_NONE;
 
-  /* Non bloquant : verifie s'il y a une touche en attente. */
+  INPUT_RECORD ir;
   DWORD n = 0;
-  if (!PeekConsoleInput(hIn, NULL, 1, &n) || n == 0) return UI_KEY_NONE;
+  while (PeekConsoleInput(hIn, &ir, 1, &n) && n > 0) {
+    if (!ReadConsoleInput(hIn, &ir, 1, &n)) break;
+    if (ir.EventType != KEY_EVENT) continue;
+    if (!ir.Event.KeyEvent.bKeyDown) continue;
 
-  /* Lit la touche. */
-  wchar_t ch = 0;
-  DWORD read = 0;
-  if (!ReadConsoleW(hIn, &ch, 1, &read, NULL) || read == 0) return UI_KEY_NONE;
+    WORD vk = ir.Event.KeyEvent.wVirtualKeyCode;
+    WORD ascii = ir.Event.KeyEvent.uChar.AsciiChar;
 
-  switch (ch) {
-    case 0:              return UI_KEY_NONE; /* touche speciale (fleches) : pas geree ici */
-    case 'M': case 'm': return UI_KEY_M;
-    case 'R': case 'r': return UI_KEY_R;
-    case 'I': case 'i': return UI_KEY_I;
-    case 'O': case 'o': return UI_KEY_O;
-    case 'Q': case 'q': return UI_KEY_Q;
-    case ' ':            return UI_KEY_SPACE;
-    default:             return UI_KEY_NONE;
+    /* Touches speciales (flèches, espace). */
+    switch (vk) {
+      case VK_UP:    return UI_KEY_UP;
+      case VK_DOWN:  return UI_KEY_DOWN;
+      case VK_LEFT:  return UI_KEY_LEFT;
+      case VK_RIGHT: return UI_KEY_RIGHT;
+      case VK_SPACE: return UI_KEY_SPACE;
+      default: break;
+    }
+    /* Lettres (via AsciiChar, fiable pour M/R/I/O/Q). */
+    switch (ascii) {
+      case 'M': case 'm': return UI_KEY_M;
+      case 'R': case 'r': return UI_KEY_R;
+      case 'I': case 'i': return UI_KEY_I;
+      case 'O': case 'o': return UI_KEY_O;
+      case 'Q': case 'q': return UI_KEY_Q;
+      default: break;
+    }
   }
+  return UI_KEY_NONE; /* CTRL-C géré par le handler de main */
 }
 
 int ui_cols(void)  { return g_cols; }
