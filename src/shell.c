@@ -148,7 +148,7 @@ static int cmd_help(int argc, char **argv) {
     "  <Entree>        Arrete l'enregistrement + sauvegarde WAV horodate\n"
     "  status          Snapshot du niveau (RMS/peak in/out, etat)\n"
     "  s               (alias de status)\n"
-    "  test          Accordeur : note + cents en continu (Ctrl+C ou touche pour arreter)\n"
+    "  test          Accordeur : note + cents en continu ('q'/Entree = arreter, Ctrl+C = quitter)\n"
     "  watch           Affichage continu du niveau (on/off)\n"
     "  pedals          Liste les pedales disponibles\n"
     "  info <nom>      Details d'une pedale (params, min/max/defaut)\n"
@@ -534,7 +534,7 @@ static int cmd_test(int argc, char **argv) {
     return 0;
   }
   g_tuner_on = 1;
-  printf("TDP: accordeur ON — joue une note. Appuie sur une touche (Ctrl+C) pour arreter.\n");
+  printf("TDP: accordeur ON — joue une note. 'q' ou Entree pour arreter, Ctrl+C pour quitter.\n");
   return 0;
 }
 
@@ -928,18 +928,25 @@ void shell_run(const char *script_path) {
       continue;
     }
     /* Mode accordeur : affiche la note en continu (retour chariot) + pause.
-     * Lire les touches en non-bloquant : Ctrl+C (ou n'importe quelle touche)
-     * arrete le mode et retourne au prompt. */
+     * Arret : 'q' ou Entree arrete le tuner (retour au prompt).
+     * Ctrl+C (3) quite le shell (comme partout). */
     if (g_tuner_on && atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
       print_tuner_line();
       tdp_sleep_ms(150); /* ~150 ms : cadence lisible */
-      /* Verifie s'il y a une touche ; si oui, arrete le tuner. */
       if (tdp_key_available()) {
         int k = tdp_getch();
-        /* Degage la sequence (ex. fleche) pour ne pas la perdre. */
-        if (k == 27) { tdp_getch(); tdp_getch(); }
-        g_tuner_on = 0;
-        printf("\nTDP: accordeur ARRETE (touche : %d)\n", k);
+        if (k == 3) {
+          /* Ctrl+C : quite le shell. */
+          printf("\n");
+          shell_quit_flag = 1;
+          break;
+        }
+        if (k == 27) { tdp_getch(); tdp_getch(); } /* degage sequence */
+        if (k == 'q' || k == 'Q' || k == '\n' || k == '\r') {
+          g_tuner_on = 0;
+          printf("\nTDP: accordeur ARRETE\n");
+        }
+        /* Les autres touches : ignorees (on reste en mode tuner). */
       }
       continue;
     }
