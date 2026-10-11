@@ -38,14 +38,27 @@ int ui_init(void) {
     g_lines = csbi.dwSize.Y;
   }
 
+  /* Mode raw sur l'entree : desactive echo + line buffer pour ReadConsole. */
   DWORD mode = 0;
-  if (GetConsoleMode(hOut, &mode)) {
-    if (SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING)) g_ansicolor = 1;
+  if (hIn && GetConsoleMode(hIn, &mode)) {
+    SetConsoleMode(hIn, mode & ~(ENABLE_ECHO_OUTPUT | ENABLE_LINE_INPUT));
+  }
+
+  DWORD mode_out = 0;
+  if (GetConsoleMode(hOut, &mode_out)) {
+    if (SetConsoleMode(hOut, mode_out | ENABLE_VIRTUAL_TERMINAL_PROCESSING)) g_ansicolor = 1;
   }
   return 0;
 }
 
 void ui_shutdown(void) {
+  /* Restaure le mode console normal. */
+  if (hIn) {
+    DWORD mode = 0;
+    if (GetConsoleMode(hIn, &mode)) {
+      SetConsoleMode(hIn, mode | ENABLE_ECHO_OUTPUT | ENABLE_LINE_INPUT);
+    }
+  }
   if (g_ansicolor) {
     const char *r = "\x1b[0m";
     WriteConsoleA(hOut, r, (DWORD)strlen(r), NULL, NULL);
@@ -96,31 +109,26 @@ void ui_title(const char *utf8) { SetConsoleTitleA(utf8); }
 
 ui_key ui_poll_key(void) {
   if (hIn == NULL) return UI_KEY_NONE;
-  INPUT_RECORD ir;
+
+  /* Non bloquant : verifie s'il y a une touche en attente. */
   DWORD n = 0;
-  while (PeekConsoleInput(hIn, &ir, 1, &n) && n > 0) {
-    ReadConsoleInput(hIn, &ir, 1, &n);
-    if (ir.EventType != KEY_EVENT || !ir.Event.KeyEvent.bKeyDown) continue;
-    WORD vk = ir.Event.KeyEvent.wVirtualKeyCode;
-    WORD ascii = ir.Event.KeyEvent.uChar.AsciiChar;
-    switch (vk) {
-      case VK_UP:    return UI_KEY_UP;
-      case VK_DOWN:  return UI_KEY_DOWN;
-      case VK_LEFT:  return UI_KEY_LEFT;
-      case VK_RIGHT: return UI_KEY_RIGHT;
-      case VK_SPACE: return UI_KEY_SPACE;
-      default: break;
-    }
-    switch (ascii) {
-      case 'M': case 'm': return UI_KEY_M;
-      case 'R': case 'r': return UI_KEY_R;
-      case 'I': case 'i': return UI_KEY_I;
-      case 'O': case 'o': return UI_KEY_O;
-      case 'Q': case 'q': return UI_KEY_Q;
-      default: break;
-    }
+  if (!PeekConsoleInput(hIn, NULL, 1, &n) || n == 0) return UI_KEY_NONE;
+
+  /* Lit la touche. */
+  wchar_t ch = 0;
+  DWORD read = 0;
+  if (!ReadConsoleW(hIn, &ch, 1, &read) || read == 0) return UI_KEY_NONE;
+
+  switch (ch) {
+    case 0:              return UI_KEY_NONE; /* touche speciale (fleches) : pas geree ici */
+    case 'M': case 'm': return UI_KEY_M;
+    case 'R': case 'r': return UI_KEY_R;
+    case 'I': case 'i': return UI_KEY_I;
+    case 'O': case 'o': return UI_KEY_O;
+    case 'Q': case 'q': return UI_KEY_Q;
+    case ' ':            return UI_KEY_SPACE;
+    default:             return UI_KEY_NONE;
   }
-  return UI_KEY_NONE; /* CTRL-C géré par le handler de main */
 }
 
 int ui_cols(void)  { return g_cols; }
