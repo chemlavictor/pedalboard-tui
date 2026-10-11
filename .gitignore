@@ -23,3 +23,6 @@ valgrind*.log
 
 # Local pi / agents
 .pi/
+
+# Historique de session (local)
+.tdp_history

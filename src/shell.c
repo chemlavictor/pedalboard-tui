@@ -707,6 +707,36 @@ static void redraw_line(const char *buf, int len) {
   fflush(stdout);
 }
 
+/* Historique persistant (.tdp_history). */
+#define HIST_FILE ".tdp_history"
+
+/* Charge l'historique depuis le fichier (silencieux si absent). */
+static void hist_load(void) {
+  FILE *f = fopen(HIST_FILE, "r");
+  if (!f) return;
+  char line[LINE_MAX];
+  g_hist_n = 0;
+  while (g_hist_n < HIST_MAX && fgets(line, sizeof line, f)) {
+    /* Retire le '\n' final. */
+    size_t l = strlen(line);
+    if (l > 0 && line[l - 1] == '\n') line[l - 1] = '\0';
+    if (line[0] == '\0') continue;
+    memcpy(g_hist[g_hist_n], line, strlen(line) + 1);
+    g_hist_n++;
+  }
+  fclose(f);
+}
+
+/* Sauvegarde l'historique dans le fichier. */
+static void hist_save(void) {
+  FILE *f = fopen(HIST_FILE, "w");
+  if (!f) return;
+  for (int i = 0; i < g_hist_n; ++i) {
+    fprintf(f, "%s\n", g_hist[i]);
+  }
+  fclose(f);
+}
+
 /* Lit une ligne avec auto-completion + historique. Retourne :
  *  0 = ok (ligne validee), -1 = EOF, -2 = Ctrl+C (quit). */
 static int readline_tdp(char *buf, int bufsz) {
@@ -913,6 +943,7 @@ void shell_run(const char *script_path) {
 
   if (interactive) {
     shell_raw_on(); /* capter Tab/Backspace (Windows) */
+    hist_load();   /* recharge l'historique persistant (.tdp_history) */
     printf("TDP — Terminal Distortion Pedal (CLI). Tapez 'help' pour l'aide, 'quit' pour sortir.\n");
   }
 
@@ -964,7 +995,10 @@ void shell_run(const char *script_path) {
 
   /* Arrete le flux au quit (si en cours). */
   audio_stop();
-  if (interactive) shell_raw_off(); /* restaure le clavier normal (Windows) */
+  if (interactive) {
+    hist_save();           /* sauvegarde l'historique dans .tdp_history */
+    shell_raw_off();       /* restaure le clavier normal (Windows) */
+  }
 
   if (f) fclose(f);
   if (interactive) printf("\nTDP: au revoir.\n");
