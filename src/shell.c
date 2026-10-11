@@ -12,9 +12,43 @@
 #include <sys/types.h>
 #ifdef _WIN32
 #include <windows.h> /* Sleep */
+#include <conio.h>   /* _getch (codes bruts, Tab=9) */
 #else
 #include <time.h>    /* nanosleep (POSIX) */
 #endif
+
+/* Lecture d'un caractere brut (Tab=9, Backspace=8/127) :
+ * Windows : _getch (conio.h) ; POSIX : getchar. */
+static int tdp_getch(void) {
+#ifdef _WIN32
+  return _getch();
+#else
+  return getchar();
+#endif
+}
+
+/* Mode raw clavier : desactive le line-buffering pour capter le Tab/Backspace.
+ * Windows : desactive ENABLE_LINE_INPUT + ENABLE_ECHO_INPUT ; POSIX : no-op
+ * (getchar suffit). */
+static void shell_raw_on(void) {
+#ifdef _WIN32
+  HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+  DWORD mode = 0;
+  if (GetConsoleMode(h, &mode)) {
+    SetConsoleMode(h, mode & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT));
+  }
+#endif
+}
+
+static void shell_raw_off(void) {
+#ifdef _WIN32
+  HANDLE h = GetStdHandle(STD_INPUT_HANDLE);
+  DWORD mode = 0;
+  if (GetConsoleMode(h, &mode)) {
+    SetConsoleMode(h, mode | ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+  }
+#endif
+}
 
 #include "pedals.h"
 #include "audio.h"
@@ -533,7 +567,7 @@ static void cmd_names_list(const char **out) {
 static int readline_tdp(char *buf, int bufsz) {
   int len = 0;
   for (;;) {
-    int c = getchar();
+    int c = tdp_getch();
     if (c == EOF) return -1;
     if (c == '\n' || c == '\r') {
       buf[len] = '\0';
@@ -654,6 +688,7 @@ void shell_run(const char *script_path) {
   }
 
   if (interactive) {
+    shell_raw_on(); /* capter Tab/Backspace (Windows) */
     printf("TDP — Terminal Distortion Pedal (CLI). Tapez 'help' pour l'aide, 'quit' pour sortir.\n");
   }
 
@@ -680,6 +715,7 @@ void shell_run(const char *script_path) {
 
   /* Arrete le flux au quit (si en cours). */
   audio_stop();
+  if (interactive) shell_raw_off(); /* restaure le clavier normal (Windows) */
 
   if (f) fclose(f);
   if (interactive) printf("\nTDP: au revoir.\n");
