@@ -1,8 +1,10 @@
 # Artefacts de build
 build/
+dist/
 *.o
 *.d
 *.a
+*.exe
 
 # Binaire
 tdp

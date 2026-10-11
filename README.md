@@ -58,6 +58,37 @@ make check-app  # app réelle sous Valgrind (optionnel, carte son + TTY requis)
 
 Pour `make check` / `make check-app`, installe Valgrind : `sudo apt install valgrind`.
 
+### Windows (build compilé — `tdp.exe`)
+
+Version native Windows de la pédale : **sans ncurses**, l'UI est rendue dans la console Windows (blocs Unicode `█▓░`, couleurs, titre de fenêtre). Le cœur DSP/params/audio est réutilisé à l'identique de la V1.
+
+**Option 1 — MSYS2 (recommandé)**
+
+```bash
+# installateur MSYS2, puis dans le shell MSYS2 :
+pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-portaudio
+# dans le repo :
+make dist        # compile tdp.exe et assemble dist/ (tdp.exe + portaudio.dll + README)
+# ou juste :
+make windows     # -> build/tdp.exe
+```
+
+**Option 2 — `build_windows.bat` (secours MinGW direct)**
+
+Prérequis : `gcc` (MinGW) + PortAudio (headers/lib) dans le `PATH`. Puis :
+
+```bat
+build_windows.bat   # -> dist\tdp.exe + dist\portaudio.dll + dist\README.md
+```
+
+**Lancer**
+
+```bat
+dist\tdp.exe
+```
+
+> Si `portaudio.dll` n'est pas à côté de `tdp.exe`, le lancement affiche un message d'erreur lisible (pas de crash). Les contrôles clavier et l'affichage sont identiques à la V1.
+
 ### Lancer sous Windows (WSL2)
 
 La V1 est native Linux (ncurses + PortAudio). Le chemin le plus simple sur une machine Windows est de la faire tourner dans **WSL2** (Ubuntu), pas de porter le code.
@@ -114,23 +145,27 @@ make && make test && make run
 pedalboard-tui/
 ├── README.md          ← ce fichier (gabarit « toujours à jour »)
 ├── LICENSE
-├── Makefile           ← build (cibles: make, run, clean, test, check, check-app)
+├── Makefile           ← build Linux + cible Windows (make windows / make dist)
+├── build_windows.bat  ← build Windows secours (MinGW direct) -> dist/
 ├── specs/
 │   └── specs.md       ← spécifications techniques (DSP, TUI, architecture)
 ├── src/               ← code C (un fichier par responsabilité)
-│   ├── main.c         ← thread UI : boucle ncurses + clavier + rendu
+│   ├── main.c         ← boucle UI commune (clavier + rendu via ui_*), #ifdef _WIN32
 │   ├── audio.c        ← thread audio : callback PortAudio (contraintes RT)
 │   ├── dsp.c          ← traitement du signal (tanh + master + VU), C pur
-│   └── params.c       ← instance des atomiques partagées + params_init()
+│   ├── params.c       ← instance des atomiques partagées + params_init()
+│   ├── ui_ncurses.c   ← impl UI Linux (ncurses)
+│   └── ui_windows.c   ← impl UI Windows (console native, sans ncurses)
 ├── include/           ← headers publics (un par module de src/)
 │   ├── params.h       ← struct tdp_params (atomiques partagées)
 │   ├── dsp.h          ← prototype dsp_process + struct dsp_vu
-│   └── audio.h        ← prototypes audio_start / audio_stop
+│   ├── audio.h        ← prototypes audio_start / audio_stop
+│   └── ui.h           ← interface UI commune (ui_*)
 └── tests/
     └── test_dsp.c     ← tests unitaires DSP (make test / make check)
 ```
 
-> La section `build/` (artefacts) existe après `make` mais n'est jamais committée.
+> La section `build/` (artefacts) et `dist/` (binaire Windows) existent après build mais ne sont jamais committés.
 
 ### Légende des dossiers
 
