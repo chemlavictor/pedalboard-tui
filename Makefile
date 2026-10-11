@@ -93,8 +93,12 @@ dist: windows
 	         /mingw64/bin/portaudio.dll /mingw32/bin/portaudio.dll /ucrt64/bin/portaudio.dll; do \
 	  if [ -f "$$f" ]; then cp "$$f" dist/portaudio.dll; echo "  DLL: $$f -> dist/portaudio.dll"; copied=1; break; fi; \
 	done; \
-	if [ "$$copied" = "0" ]; then echo "  ATTENTION: portaudio.dll introuvable. Copie-la manuellement dans dist/"; fi
+	if [ "$$copied" = "0" ]; then \
+	  echo "  DLL introuvable localement -> telechargement..."; \
+	  bash download_portaudio_dll.sh || echo "  ECHec telechargement. Copie manuellement portaudio.dll dans dist/"; \
+	fi
 	@cp README.md dist/README.md
-	@echo "dist/ prete : tdp.exe + portaudio.dll + README.md (version $(GIT_HASH))"
+	@echo "dist/ prete (version $(GIT_HASH)) :"; \
+	ls -la dist/
 
 -include $(DEPS)
