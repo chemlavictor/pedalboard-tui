@@ -157,7 +157,7 @@ static int cmd_help(int argc, char **argv) {
   printf(
     "TDP — Terminal Distortion Pedal (CLI)\n"
     "Chaine de pedales audio temps reel, pilotee par commandes.\n"
-    "  (Tab = auto-completion des commandes et des pedales)\n"
+    "  Tab = auto-completion | Fleches haut/bas = historique | Ctrl+C = quit | Ctrl+L = nettoyer l'ecran\n"
     "\n"
     "Commandes :\n"
     "  in [N]          Listes les entrees / choisit l'entree N\n"
@@ -795,6 +795,17 @@ static int readline_tdp(char *buf, int bufsz) {
     if (c == 3) { /* Ctrl+C : quit le shell (le mode tuner gere ses propres touches) */
       printf("\n");
       return -2;
+    }
+    if (c == 12) { /* Ctrl+L : nettoyer l'ecran */
+#ifdef _WIN32
+      system("cls");
+#else
+      printf("\033[2J\033[H"); /* ANSI : efface + retour en haut a gauche */
+#endif
+      /* Re-affiche le prompt + la ligne courante. */
+      printf("tdp> %.*s", len, buf);
+      fflush(stdout);
+      continue;
     }
     if (c == '\n' || c == '\r') {
       buf[len] = '\0';
