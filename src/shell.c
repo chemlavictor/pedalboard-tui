@@ -166,7 +166,7 @@ static int cmd_help(int argc, char **argv) {
     "  test          Accordeur : note + cents en continu ('q'/Entree = arreter, Ctrl+C = quitter)\n"
     "  test_out      Test des sorties : joue un bip sur chaque device (pour identifier le bon)\n"
     "  test_out <API> Test des sorties filtre par API (ex: test_out WASAPI)\n"
-    "  test_in       Test de l'entree : affiche le volume percu (0-100%%) pendant 5 s\n"
+    "  test_in       Test des entrees : lit le volume de chaque device (2 s chacun)\n"
     "  watch           Affichage continu du niveau (on/off)\n"
     "  pedals          Liste les pedales disponibles\n"
     "  info <nom>      Details d'une pedale (params, min/max/defaut)\n"
