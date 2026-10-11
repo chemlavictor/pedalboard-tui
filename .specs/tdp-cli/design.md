@@ -46,6 +46,7 @@ TDP CLI est une application C11 à deux threads qui remplace le TUI par un **she
 - Dispatch vers les handlers (voir `Commands` ci-dessous).
 - Mode interactif : affiche `tdp> ` avant chaque lecture. Mode script : pas de prompt, termine à la fin du fichier.
 - **Pas de readline avancé** : une simple `fgets` suffit (pas d'historique, pas d'auto-complétion — V1 CLI).
+- **Portabilité Windows** : le shell n'utilise que de la C standard portable (`fgets`, `printf`, `fopen`, `time`, `strftime`, `mkdir` via `<sys/stat.h>`). Pas de dépendance Unix/ncurses. Le dossier `recordings/` est créé via `mkdir("recordings", 0755)` (fonctionne sur Windows en MSYS2/MinGW). Les noms de fichier utilisent `/` (accepté par Windows).
 
 ### Component 2: `src/pedals.c` + `include/pedals.h` (nouveau) — catalogue de pédales
 - Structure du catalogue :

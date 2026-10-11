@@ -166,7 +166,12 @@ La CLI SHALL fournir : `help` (une vue d'ensemble : intro, liste des commandes a
 - **THEN** il voit : une phrase d'intro, la liste des commandes (une par ligne, avec description courte), un exemple de session (load → start → record → quit), et la liste des pédales disponibles.
 
 ### FR-010: Portabilité Windows + Linux
-La CLI SHALL être compilable et fonctionnelle sur Windows (MinGW/MSYS2, `make dist` → `tdp.exe` + `portaudio.dll`) et Linux (`make`), avec le même code source.
+La CLI SHALL être compilable et fonctionnelle sur Windows (MinGW/MSYS2, `make dist` → `tdp.exe` + `portaudio.dll`) et Linux (`make`), avec le même code source. Le shell de commandes SHALL n'utiliser que de la C standard portable (`fgets`, `printf`, `fopen`, `time`, `strftime`, `mkdir`) — aucune dépendance Unix-only ni ncurses. L'enregistrement WAV, la création du dossier `recordings/`, et le mode script SHALL fonctionner de manière identique sur les deux plateformes.
+
+#### Scenario: Fonctionnement identique sur Windows
+- **GIVEN** `make dist` a produit `tdp.exe` + `portaudio.dll` sous Windows
+- **WHEN** l'utilisateur lance `dist\tdp.exe` et tape `load`/`start`/`record`+Enter
+- **THEN** le shell fonctionne (commandes, enregistrement WAV dans `recordings/`) de la même manière que sous Linux.
 
 ## Acceptance Criteria
 - **AC-001** : `./tdp.exe` affiche un prompt `tdp> ` et accepte les commandes (interactif).

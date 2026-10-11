@@ -137,14 +137,15 @@ Design: .specs/tdp-cli/design.md
 - [ ] 4.2 Portabilité Windows (make dist) + retrait TUI
   - ID: T-012
   - Requirement(s): FR-010
-  - Design: FR-010
-  - Files: Makefile, src/main.c
+  - Design: FR-010 + Component 1 (portabilité shell)
+  - Files: Makefile, src/main.c, src/shell.c
   - Steps:
     - `make dist` compile la CLI (plus de `ui_windows.c`/`ui_ncurses.c` requis).
     - `portaudio.dll` copiée dans `dist/` (Makefile déjà corrigé).
     - `main.c` n'utilise plus `ui_*`.
+    - Shell portable : vérifier `mkdir`/`fopen`/`time`/`strftime` (pas de dépendance Unix) ; `recordings/` créé sous Windows ; noms de fichiers avec `/`.
     - Tester `make` (Linux) + `make dist` (Windows).
-  - Validation: `make` (Linux) OK ; `make dist` (Windows) → `tdp.exe` + `portaudio.dll` ; `./tdp.exe` lance le shell.
+  - Validation: `make` (Linux) OK ; `make dist` (Windows) → `tdp.exe` + `portaudio.dll` ; `./tdp.exe` lance le shell ; `record`+Enter produit un WAV sous Windows.
 
 - [ ] 4.3 Tests script + Valgrind final + README
   - ID: T-013
