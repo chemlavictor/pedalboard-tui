@@ -13,6 +13,7 @@
 #include "ui.h"
 
 static HANDLE hOut = NULL;
+static HANDLE hIn = NULL;
 static int g_cols = 80, g_lines = 24;
 static int g_ansicolor = 0;
 
@@ -24,6 +25,7 @@ static void ensure_console(void) {
   HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
   if (h == NULL || (GetFileType(h) & 3) != FILE_TYPE_CHAR) AllocConsole();
   hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  hIn = GetStdHandle(STD_INPUT_HANDLE);
 }
 
 int ui_init(void) {
@@ -93,10 +95,11 @@ void ui_color(ui_color_t c, int on) {
 void ui_title(const char *utf8) { SetConsoleTitleA(utf8); }
 
 ui_key ui_poll_key(void) {
+  if (hIn == NULL) return UI_KEY_NONE;
   INPUT_RECORD ir;
   DWORD n = 0;
-  while (PeekConsoleInput(hOut, &ir, 1, &n) && n > 0) {
-    ReadConsoleInput(hOut, &ir, 1, &n);
+  while (PeekConsoleInput(hIn, &ir, 1, &n) && n > 0) {
+    ReadConsoleInput(hIn, &ir, 1, &n);
     if (ir.EventType != KEY_EVENT || !ir.Event.KeyEvent.bKeyDown) continue;
     switch (ir.Event.KeyEvent.wVirtualKeyCode) {
       case VK_UP:    return UI_KEY_UP;
