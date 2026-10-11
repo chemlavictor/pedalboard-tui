@@ -1019,6 +1019,27 @@ static void exec_line(char *line, int interactive) {
   (void)interactive;
 }
 
+/* Execute une ligne de commande (in-process, pour le mode serveur).
+ * La sortie est ecrite dans stdout (a rediriger par l'appelant). */
+void shell_exec_line(const char *line_in) {
+  /* Copie la ligne (exec_line modifie en place). */
+  char line[512];
+  int n = (int)strlen(line_in);
+  if (n >= 512) n = 511;
+  memcpy(line, line_in, (size_t)n);
+  line[n] = '\0';
+  shell_quit_flag = 0;
+  exec_line(line, 0);
+}
+
+/* Initialise l'etat audio + pedales (pour le mode serveur).
+ * Appeler avant shell_exec_line. */
+void shell_server_init(void) {
+  /* Initialise l'etat audio partage (comme shell_run). */
+  audio_init(&g_sh, &g_ring, g_rec_buf);
+  audio_set_chain(&g_chain);
+}
+
 /* Point d'entrée du shell.
  * script_path : NULL = interactif, sinon lecture du fichier. */
 void shell_run(const char *script_path) {

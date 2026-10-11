@@ -21,7 +21,7 @@ VERSION_FLAG := -DTDP_GIT_HASH=\"$(GIT_HASH)\"
 
 # Cœur commun (CLI) — réutilisé identique sur Linux et Windows.
 CORE_SRCS := $(SRC_DIR)/main.c $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c \
-             $(SRC_DIR)/audio.c $(SRC_DIR)/dsp.c $(SRC_DIR)/params.c $(SRC_DIR)/wav.c $(SRC_DIR)/tuner.c $(SRC_DIR)/devtest.c $(SRC_DIR)/in_test.c
+             $(SRC_DIR)/audio.c $(SRC_DIR)/dsp.c $(SRC_DIR)/params.c $(SRC_DIR)/wav.c $(SRC_DIR)/tuner.c $(SRC_DIR)/devtest.c $(SRC_DIR)/in_test.c $(SRC_DIR)/server.c
 
 LINUX_SRCS  := $(CORE_SRCS)
 WIN_SRCS    := $(CORE_SRCS)
@@ -108,6 +108,8 @@ $(BUILD)/win_tuner.o:   $(SRC_DIR)/tuner.c   | $(BUILD)
 $(BUILD)/win_devtest.o: $(SRC_DIR)/devtest.c | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
 $(BUILD)/win_in_test.o: $(SRC_DIR)/in_test.c | $(BUILD)
+	$(CC) $(WIN_CFLAGS) -c $< -o $@
+$(BUILD)/win_server.o: $(SRC_DIR)/server.c | $(BUILD)
 	$(CC) $(WIN_CFLAGS) -c $< -o $@
 
 # Assembler dist/ (tdp.exe + portaudio.dll + README).
