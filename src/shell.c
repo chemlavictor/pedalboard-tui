@@ -3,6 +3,8 @@
  * Mode script : lit un fichier ligne par ligne, pas de prompt, termine a la fin.
  * Portable Windows + Linux : uniquement C standard (fgets/printf/fopen/time/strftime/mkdir).
  */
+#define _POSIX_C_SOURCE 200809L /* declare nanosleep/mkdir sans warning */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +57,7 @@ static void shell_raw_off(void) {
 #include "pedals.h"
 #include "audio.h"
 #include "wav.h"
+#include "tuner.h"
 
 #define LINE_MAX 512
 
@@ -84,6 +87,7 @@ static int cmd_stop(int argc, char **argv);
 static int cmd_record(int argc, char **argv);
 static int cmd_status(int argc, char **argv);
 static int cmd_watch(int argc, char **argv);
+static int cmd_test(int argc, char **argv);
 
 /* Table de dispatch. Les commandes audio (in/out/start/stop/record/load...)
  * seront branchées dans les phases suivantes (audio.c / wav.c). */
@@ -105,6 +109,7 @@ static struct { const char *name; cmd_fn fn; } g_cmds[] = {
   { "status", cmd_status },
   { "s",      cmd_status },  /* alias de status */
   { "watch",  cmd_watch },
+  { "test",   cmd_test },    /* accordeur */
 };
 static const int N_CMDS = (int)(sizeof g_cmds / sizeof g_cmds[0]);
 
@@ -448,8 +453,9 @@ static int cmd_status(int argc, char **argv) {
   int running = atomic_load_explicit(&g_sh.running, memory_order_relaxed);
   int recording = atomic_load_explicit(&g_sh.recording, memory_order_relaxed);
   int pa = atomic_load_explicit(&g_sh.pa_ok, memory_order_relaxed);
-  printf("  flux : %s   record : %s   portaudio : %s\n",
-         running ? "ON" : "OFF", recording ? "ON" : "OFF", pa ? "ok" : "ko");
+  (void)pa; /* le statut stream est redundant avec 'flux' ; on l'affiche seulement si anormal */
+  printf("  flux : %s   record : %s\n",
+         running ? "ON" : "OFF", recording ? "ON" : "OFF");
   if (g_chain.len > 0) {
     printf("  chaine : %d pedale(s)", g_chain.len);
     for (int i = 0; i < g_chain.len; ++i) printf(" %s", g_chain.defs[i]->name);
@@ -472,6 +478,30 @@ static int cmd_watch(int argc, char **argv) {
   (void)argc; (void)argv;
   g_watch = !g_watch;
   printf("TDP: watch %s\n", g_watch ? "ON (affichage continu, 'watch' pour arreter)" : "OFF");
+  return 0;
+}
+
+/* Accordeur : analyse le signal d'entree et affiche la note + ecart. */
+static int cmd_test(int argc, char **argv) {
+  (void)argc; (void)argv;
+  if (!atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
+    printf("TDP: demarre le flux d'abord (start) pour utiliser l'accordeur\n");
+    return 0;
+  }
+  double sr = atomic_load_explicit(&g_sh.sr, memory_order_relaxed);
+  if (sr <= 0.0) sr = 48000.0;
+
+  /* Lit l'apercu du signal d'entree (les derniers echantillons). */
+  static float buf[4096];
+  int n = audio_input_preview(buf, 4096);
+  if (n < 64) {
+    printf("  (pas assez de signal — joue une note)\n");
+    return 0;
+  }
+
+  tuner_result r;
+  tuner_analyze(buf, n, sr, &r);
+  tuner_print(&r);
   return 0;
 }
 

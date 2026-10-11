@@ -65,17 +65,31 @@ Une application C11 à **2 threads** qui :
 | `in N` / `out N` | Sélectionner le périphérique N |
 | `load <fichier>` | Charger une chaîne de pédales depuis un `.tdp` |
 | `chain` | Afficher la chaîne chargée |
+| `ls` | Alias de `chain` |
 | `start` | Démarrer le flux audio (pédales appliquées) |
 | `stop` | Arrêter le flux audio |
 | `record` | Commencer l'enregistrement (post-pédales) |
 | `<Entrée>` | Arrêter l'enregistrement + sauvegarde `recordings/<date>.wav` |
 | `status` | Snapshot du niveau (RMS/peak in/out) + état |
+| `s` | Alias de `status` |
 | `watch` | Affichage continu du niveau (on/off) |
 | `pedals` | Lister les pédales disponibles |
 | `info <nom>` | Détails d'une pédale (params, min/max/défaut) |
 | `reset` | Reset les params de la chaîne aux défauts |
 | `help` | Vue d'ensemble (commandes + pédales + exemple) |
 | `quit` | Quitter |
+
+## Confort clavier
+
+| Touche | Action |
+|--------|--------|
+| `Tab` | Auto-complétion : commandes (1er mot), pédales (`info <Tab>`), fichiers `.tdp` (`load <Tab>`) |
+| `↑` / `↓` | Historique des commandes (32 dernières) |
+| `Ctrl+C` | Quitter (équivalent `quit`) |
+| `Backspace` | Effacer |
+| `<Entrée>` | Exécuter la commande (ou stopper l'enregistrement) |
+
+> Le shell est du texte stdout/stdin simple (pas de ncurses), donc portable Windows + Linux sans dépendance.
 
 ## Pédales (V1)
 
@@ -91,14 +105,15 @@ Une application C11 à **2 threads** qui :
 
 Une pédale par ligne (l'ordre = l'ordre en série), `param=valeur`, `#` = commentaire.
 
-Exemple `guitar.tdp` :
+Exemple `guitar_zombies_metal.tdp` (son métal, inclus dans le repo) :
 ```
-# Chaîne chug : booster -> distorsion -> noise gate -> volume
 booster level=2.0
 distortion gain=0.6
 noise_gate threshold=-40
 volume level=0.8
 ```
+
+Charge : `tdp> load guitar_zombies_metal.tdp` (Tab complète les `.tdp`).
 
 ## Mode script (automatisation)
 

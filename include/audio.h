@@ -30,6 +30,7 @@ typedef struct {
   _Atomic float vu_out_rms;
   _Atomic float vu_out_peak;
   _Atomic bool pa_ok;
+  _Atomic double sr; /* sample rate reel (pour l'accordeur) */
 } audio_shared;
 
 /* Ring buffer d'enregistrement (écrit par le RT, lu par le main). */
@@ -59,5 +60,9 @@ int audio_list_devices(tdp_device *out);
 unsigned audio_rec_head(void);
 /* Reset le ring (apres sauvegarde). */
 void audio_rec_reset(void);
+
+/* Copie un apercu du signal d'ENTREE brut (avant pedales) dans out (max n).
+ * Retourne le nb d'echantillons copies. Pour l'accordeur. */
+int audio_input_preview(float *out, int n);
 
 #endif /* TDP_AUDIO_H */

@@ -27,6 +27,12 @@ static chain_t g_chain_active = {0};
 typedef struct { float in_rms, in_peak, out_rms, out_peak; } vu_t;
 static vu_t g_vu = {0};
 
+/* Apercu du signal d'entree brut (avant pedales) pour l'accordeur.
+ * Petit buffer circulaire que le callback RT alimente en continu. */
+#define PREVIEW_N 4096
+static float g_input_preview[PREVIEW_N];
+static unsigned g_preview_head = 0;
+
 static void vu_reset(void) { g_vu = (vu_t){0}; }
 
 /* Calcule RMS + peak (sur le bloc) pour un buffer. */
@@ -54,6 +60,12 @@ static int audio_callback(const void *in, void *out, unsigned long n,
 
   const float *in_buf = (const float *)in;
   float *out_buf = (float *)out;
+
+  /* Alimenter l'apercu du signal d'entree brut (pour l'accordeur). */
+  for (unsigned i = 0; i < n; ++i) {
+    g_input_preview[g_preview_head] = in_buf[i];
+    g_preview_head = (g_preview_head + 1) % PREVIEW_N;
+  }
 
   /* Copie l'entree dans un buffer local (on modifie en place). */
   /* out_buf sert de buffer de travail (on y ecrit le signal traite). */
@@ -150,18 +162,20 @@ bool audio_start(int in_id, int out_id) {
   g_pa_inited = 1;
   vu_reset();
 
-  bool opened = try_open(48000.0, 256, in_id, out_id);
-  if (!opened) opened = try_open(44100.0, 256, in_id, out_id);
-  if (!opened) opened = try_open(48000.0, 128, in_id, out_id);
-  if (!opened) opened = try_open(48000.0, 256, -1, -1);
+  double used_sr = 0.0;
+  if (try_open(48000.0, 256, in_id, out_id)) used_sr = 48000.0;
+  else if (try_open(44100.0, 256, in_id, out_id)) used_sr = 44100.0;
+  else if (try_open(48000.0, 128, in_id, out_id)) used_sr = 48000.0;
+  else if (try_open(48000.0, 256, -1, -1)) used_sr = 48000.0;
 
-  if (!opened) {
+  if (used_sr == 0.0) {
     if (g_sh) atomic_store_explicit(&g_sh->pa_ok, false, memory_order_relaxed);
     return false;
   }
   if (g_sh) {
     atomic_store_explicit(&g_sh->pa_ok, true, memory_order_relaxed);
     atomic_store_explicit(&g_sh->running, true, memory_order_relaxed);
+    atomic_store_explicit(&g_sh->sr, used_sr, memory_order_relaxed);
   }
   return true;
 }
@@ -208,4 +222,15 @@ void audio_rec_reset(void) {
   if (!g_ring) return;
   g_ring->head = 0;
   atomic_store_explicit(&g_ring->count, 0, memory_order_relaxed);
+}
+
+/* Copie un apercu du signal d'entree brut (les derniers n echantillons). */
+int audio_input_preview(float *out, int n) {
+  if (n > PREVIEW_N) n = PREVIEW_N;
+  unsigned head = g_preview_head;
+  unsigned start = (head > (unsigned)n) ? (head - n) : (head + PREVIEW_N - n);
+  for (int i = 0; i < n; ++i) {
+    out[i] = g_input_preview[(start + i) % PREVIEW_N];
+  }
+  return n;
 }
