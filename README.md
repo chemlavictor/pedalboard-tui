@@ -8,21 +8,45 @@ Pédale de distorsion numérique pilotée entièrement au clavier, avec une inte
 
 ### Linux / macOS (ou WSL)
 ```bash
+# 1. Dépendances (une fois)
+sudo apt install -y build-essential portaudio19-dev libncurses-dev valgrind git
+
+# 2. Compile + lance
 ./run.sh            # compile si besoin, puis lance
 # ou : make && make run
 ```
 
-### Windows (natif)
-1. Installe **MSYS2** (https://www.msys2.org/) → par défaut `C:\msys64`.
-2. Ouvre le shell **« MSYS2 MINGW64 »** (menu démarrer), va dans le repo :
-   ```bash
-   cd /c/Users/utilisateur/Documents/pedalboard-tui
-   ./install_windows.sh   # installe gcc + PortAudio + compile dist/
-   ```
-   (ou, si MSYS2 est déjà prêt : `make dist`)
-3. **Lancer** : double-cliquer **`run.bat`** (ou `dist\tdp.exe`) → ouvre la TUI, où que tu sois.
+### Windows (natif, sans WSL)
 
-> Le code est le même ; seul le système de rendu change (console Windows / ncurses). Pas de chemin UNC, pas d'`Accès refusé` : `run.bat`/`run.sh` gèrent le dossier tout seuls.
+**1. Installer MSYS2** (une fois) :
+- Télécharge : https://www.msys2.org/
+- Installe par défaut dans `C:\msys64`
+
+**2. Ouvre le shell « MSYS2 MINGW64 »** (menu démarrer) — PAS « MSYS2 » normal, PAS « UCRT64 ».
+
+**3. Dans ce shell, installe TOUTES les dépendances** (une fois) :
+```bash
+pacman -S --noconfirm \
+  mingw-w64-x86_64-gcc \
+  mingw-w64-x86_64-portaudio \
+  make \
+  git
+```
+
+**4. Va dans le repo + compile** :
+```bash
+cd /c/Users/utilisateur/Documents/pedalboard-tui
+make dist           # compile tdp.exe + portaudio.dll -> dist/
+```
+
+**5. Lancer** :
+```bash
+dist/tdp.exe
+```
+Ou double-clique **`run.bat`** dans l'explorateur (fonctionne depuis n'importe quel dossier).
+
+> **Vérifie la version** : le pied de page de la TUI affiche `v<hash>` (ex. `vb5cb4a5`).
+> Si tu vois `vnogit` = `git` n'est pas installé dans MSYS2 → `pacman -S --noconfirm git` puis `make dist`.
 
 ## C'est quoi ?
 
@@ -152,12 +176,26 @@ make && make test && make run
 | `M` | Toggle Mute global (sortie forcée à 0, DSP continue) |
 | `↑` / `↓` | Sélectionner le paramètre (Gain ↔ Master) |
 | `←` / `→` | Diminuer / augmenter le paramètre sélectionné (pas de 5 %) |
+| `I` | Ouvrir le menu de sélection de l'entrée audio |
+| `O` | Ouvrir le menu de sélection de la sortie audio |
 | `R` | Reset aux défauts (Gain = 0.5, Master = 0.75) |
 | `q` ou `CTRL-C` | Quitter proprement (stop audio + endwin) |
 
+**Dans le menu** (après `I` ou `O`) :
+
+| Touche | Action |
+|--------|--------|
+| `↑` / `↓` | Naviguer dans la liste |
+| `ESPACE` | Confirmer le choix (ré-ouvre le stream) |
+| `q` | Annuler |
+
 **Valeurs par défaut** : Gain = **0.5** (50 %), Master = **0.75** (75 %).
 
-**Pied de page** de l'UI affiche : fréquence d'échantillonnage (Hz), taille du buffer, et statut PortAudio (OK/ERREUR).
+**Pied de page** de l'UI affiche (2 lignes) :
+```
+48000 Hz - buffer 256 - PortAudio OK - vb5cb4a5
+SP:bypass M:mute Up/Dn:param Lt/Rt:+/- I:in O:out R:reset q:quit
+```
 
 ## Structure du projet
 
