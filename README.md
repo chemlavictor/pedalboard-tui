@@ -2,6 +2,22 @@
 
 Pédale de distorsion numérique pilotée entièrement au clavier, avec une interface TUI (ncurses) et un moteur audio temps réel (PortAudio).
 
+**Supporte Windows ET Linux avec le même code.**
+
+## Démarrage rapide
+
+### Linux / macOS (ou WSL)
+```bash
+./run.sh            # compile si besoin, puis lance
+# ou : make && make run
+```
+
+### Windows (natif, double-clic)
+1. **Compiler une fois** : double-cliquer **`build.bat`** (nécessite MSYS2 + gcc + PortAudio ; sinon il t'affiche les instructions).
+2. **Lancer** : double-cliquer **`run.bat`** → ouvre la TUI, où que tu sois dans l'arborescence.
+
+> Le code est le même ; seul le système de rendu change (console Windows / ncurses). Pas de chemin UNC, pas d'`Accès refusé` : `run.bat`/`run.sh` gèrent le dossier tout seuls.
+
 ## C'est quoi ?
 
 Une petite application C11 qui :
@@ -146,7 +162,10 @@ pedalboard-tui/
 ├── README.md          ← ce fichier (gabarit « toujours à jour »)
 ├── LICENSE
 ├── Makefile           ← build Linux + cible Windows (make windows / make dist)
-├── build_windows.bat  ← build Windows secours (MinGW direct) -> dist/
+├── build_windows.bat  ← build Windows (MinGW direct) -> dist/
+├── build.bat          ← build Windows auto (detecte gcc/MSYS2, sinon instructions)
+├── run.bat            ← lancer tdp.exe (Windows) depuis n'importe quel dossier
+├── run.sh             ← lancer la TUI (Linux/macOS/WSL), compile si besoin
 ├── specs/
 │   └── specs.md       ← spécifications techniques (DSP, TUI, architecture)
 ├── src/               ← code C (un fichier par responsabilité)
