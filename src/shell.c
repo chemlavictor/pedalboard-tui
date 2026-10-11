@@ -78,6 +78,7 @@ static int cmd_help(int argc, char **argv) {
   printf(
     "TDP — Terminal Distortion Pedal (CLI)\n"
     "Chaine de pedales audio temps reel, pilotee par commandes.\n"
+    "  (Tab = auto-completion des commandes et des pedales)\n"
     "\n"
     "Commandes :\n"
     "  in [N]          Listes les entrees / choisit l'entree N\n"
@@ -477,6 +478,121 @@ int shell_quit_flag = 0;
 static void record_stop_and_save(void);
 
 /* ------------------------------------------------------------------ */
+/* Ligne avec auto-completion (Tab) — mode interactif seulement        */
+/* ------------------------------------------------------------------ */
+
+/* Complete le mot en cours (prefix) avec la liste `cands`.
+ * Modifie buf si completion univoque. Retourne la nouvelle longueur de buf,
+ * ou -1 si pas de completion (aucun match / ambigue). */
+static int try_complete(char *buf, int len, const char **cands) {
+  char *start = buf;
+  for (int i = 0; i < len; ++i) if (buf[i] == ' ') start = buf + i + 1;
+  int preflen = len - (int)(start - buf);
+
+  const char *match = NULL;
+  int n_match = 0;
+  for (int i = 0; cands[i]; ++i) {
+    if (strncmp(cands[i], start, (size_t)preflen) == 0) {
+      if (!match) match = cands[i];
+      ++n_match;
+    }
+  }
+  if (n_match == 0) return -1;
+  if (n_match > 1) {
+    printf("\r\n");
+    for (int i = 0; cands[i]; ++i) {
+      if (strncmp(cands[i], start, (size_t)preflen) == 0) printf("  %s\n", cands[i]);
+    }
+    printf("tdp> %s", buf);
+    fflush(stdout);
+    return -1;
+  }
+  int newlen = (int)(start - buf) + (int)strlen(match) + 1;
+  if (newlen < LINE_MAX - 1) {
+    memcpy(buf + (start - buf), match, strlen(match));
+    buf[newlen - 1] = ' ';
+    buf[newlen] = '\0';
+    printf("\r");
+    for (int i = 0; i < newlen + 5; ++i) printf(" ");
+    printf("\rtdp> %s", buf);
+    fflush(stdout);
+    return newlen;
+  }
+  return -1;
+}
+
+/* Construit la liste des commandes (pour la completion du 1er mot). */
+static void cmd_names_list(const char **out) {
+  int i = 0;
+  for (int k = 0; k < N_CMDS; ++k) out[i++] = g_cmds[k].name;
+  out[i] = NULL;
+}
+
+/* Lit une ligne avec auto-completion. Retourne 0 si ok, -1 si EOF.
+ * Tab complete ; Backspace efface ; Entree valide. */
+static int readline_tdp(char *buf, int bufsz) {
+  int len = 0;
+  for (;;) {
+    int c = getchar();
+    if (c == EOF) return -1;
+    if (c == '\n' || c == '\r') {
+      buf[len] = '\0';
+      printf("\n");
+      return 0;
+    }
+    if (c == 127 || c == 8) { /* Backspace */
+      if (len > 0) {
+        --len;
+        printf("\b \b");
+        fflush(stdout);
+      }
+      continue;
+    }
+    if (c == 9) { /* Tab : auto-completion (commandes + pedales, portable) */
+      /* Determine le 1er mot pour savoir quoi completer. */
+      char first[64] = {0};
+      int fi = 0;
+      for (int i = 0; i < len && buf[i] != ' '; ++i) if (fi < 63) first[fi++] = buf[i];
+      const char **cands = NULL;
+      if (strcmp(first, "info") == 0) {
+        /* Complete les noms de pedales. */
+        static const char *ped_cands[16];
+        int np = 0;
+        const pedal_def *all = pedals_all();
+        for (int i = 0; all[i].name && np < 15; ++i) ped_cands[np++] = all[i].name;
+        ped_cands[np] = NULL;
+        cands = ped_cands;
+      } else {
+        /* 1er mot : complete les commandes. */
+        static const char *cmd_cands[32];
+        cmd_names_list(cmd_cands);
+        cands = cmd_cands;
+      }
+      if (len > 0) {
+        int newlen = try_complete(buf, len, cands);
+        if (newlen >= 0) len = newlen;
+      }
+      /* Si le mot etait vide, on complete la premiere commande. */
+      if (len == 0 && cands && cands[0]) {
+        len = (int)strlen(cands[0]) + 1;
+        snprintf(buf, bufsz, "%s ", cands[0]);
+        buf[len - 1] = ' ';
+        buf[len] = '\0';
+        printf("%s ", cands[0]);
+        fflush(stdout);
+      }
+      continue;
+    }
+    /* Caractere normal. */
+    if (len < bufsz - 1) {
+      buf[len++] = (char)c;
+      putchar(c);
+      fflush(stdout);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Boucle principale                                                   */
 /* ------------------------------------------------------------------ */
 static void exec_line(char *line, int interactive) {
@@ -555,7 +671,7 @@ void shell_run(const char *script_path) {
     if (interactive) {
       printf("tdp> ");
       fflush(stdout);
-      if (!fgets(line, sizeof line, stdin)) break; /* EOF (Ctrl-D) */
+      if (readline_tdp(line, sizeof line) == -1) break; /* EOF (Ctrl-D) */
     } else {
       if (!fgets(line, sizeof line, f)) break; /* fin du script */
     }
