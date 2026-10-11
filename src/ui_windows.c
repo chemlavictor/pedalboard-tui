@@ -101,18 +101,23 @@ ui_key ui_poll_key(void) {
   while (PeekConsoleInput(hIn, &ir, 1, &n) && n > 0) {
     ReadConsoleInput(hIn, &ir, 1, &n);
     if (ir.EventType != KEY_EVENT || !ir.Event.KeyEvent.bKeyDown) continue;
-    switch (ir.Event.KeyEvent.wVirtualKeyCode) {
+    WORD vk = ir.Event.KeyEvent.wVirtualKeyCode;
+    WORD ascii = ir.Event.KeyEvent.uChar.AsciiChar;
+    switch (vk) {
       case VK_UP:    return UI_KEY_UP;
       case VK_DOWN:  return UI_KEY_DOWN;
       case VK_LEFT:  return UI_KEY_LEFT;
       case VK_RIGHT: return UI_KEY_RIGHT;
       case VK_SPACE: return UI_KEY_SPACE;
-      case 'M':      return UI_KEY_M;
-      case 'R':      return UI_KEY_R;
-      case 'Q':      return UI_KEY_Q;
-      case 'I':      return UI_KEY_I;
-      case 'O':      return UI_KEY_O;
-      default:       break;
+      default: break;
+    }
+    switch (ascii) {
+      case 'M': case 'm': return UI_KEY_M;
+      case 'R': case 'r': return UI_KEY_R;
+      case 'I': case 'i': return UI_KEY_I;
+      case 'O': case 'o': return UI_KEY_O;
+      case 'Q': case 'q': return UI_KEY_Q;
+      default: break;
     }
   }
   return UI_KEY_NONE; /* CTRL-C géré par le handler de main */
