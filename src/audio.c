@@ -10,6 +10,7 @@
 #include <math.h>
 
 static PaStream *g_stream = NULL;
+static int g_pa_inited = 0; /* PortAudio initialise (idempotent) */
 
 /* Etat partagé (pointe vers des structures allouees par le main). */
 static audio_shared *g_sh = NULL;
@@ -103,6 +104,11 @@ void audio_init(audio_shared *sh, rec_ring *ring, float *rec_buf) {
   atomic_store_explicit(&sh->recording, false, memory_order_relaxed);
   atomic_store_explicit(&sh->pa_ok, false, memory_order_relaxed);
   g_chain_idx = 0;
+  /* Initialise PortAudio des le depart, pour que `in`/`out` (list_devices)
+   * fonctionnent avant le premier `start`. */
+  if (!g_pa_inited) {
+    if (Pa_Initialize() == paNoError) g_pa_inited = 1;
+  }
 }
 
 void audio_set_chain(const chain_t *c) {
@@ -136,11 +142,12 @@ static bool try_open(double sr, long frames, int in_dev, int out_dev) {
 }
 
 bool audio_start(int in_id, int out_id) {
-  PaError err = Pa_Initialize();
-  if (err != paNoError) {
+  /* PortAudio est deja initialise par audio_init ; on le verifie juste au cas ou. */
+  if (!g_pa_inited && Pa_Initialize() != paNoError) {
     if (g_sh) atomic_store_explicit(&g_sh->pa_ok, false, memory_order_relaxed);
     return false;
   }
+  g_pa_inited = 1;
   vu_reset();
 
   bool opened = try_open(48000.0, 256, in_id, out_id);
@@ -173,6 +180,11 @@ void audio_stop(void) {
 }
 
 int audio_list_devices(tdp_device *out) {
+  /* Assure que PortAudio est initialise (sinon Pa_GetDeviceCount retourne -1). */
+  if (!g_pa_inited) {
+    if (Pa_Initialize() != paNoError) return 0;
+    g_pa_inited = 1;
+  }
   int n = 0;
   int max = Pa_GetDeviceCount();
   if (max < 0) return 0;
