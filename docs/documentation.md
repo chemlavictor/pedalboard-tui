@@ -70,7 +70,7 @@ tdp> in 1               # sélectionner l'entrée 1
 tdp> out                # lister les sorties (casque / HP)
    [0] Sortie Realtek         [ALSA]
 tdp> out 0              # sélectionner la sortie 0
-tdp> load son_rock.tdp  # charger une chaîne de pédales (.tdp)
+tdp> load tdp/son_rock.tdp  # charger une chaîne de pédales (.tdp)
 tdp> chain              # afficher la chaîne chargée
 tdp> start              # démarrer le flux audio — le son passe par les pédales
 ```
@@ -265,14 +265,14 @@ Le `noise_gate` calcule le RMS du bloc courant et, s'il est sous le seuil (conve
 Un fichier `.tdp` est une pédale par ligne, `param=valeur`, `#` = commentaire :
 
 ```
-# son_rock.tdp — crunch rock
+# tdp/son_rock.tdp — crunch rock
 booster level=1.8
 distortion gain=0.45
 noise_gate threshold=-42
 volume level=0.8
 ```
 
-Presets inclus : `son_metal.tdp` (chug, gain élevé), `son_rock.tdp` (crunch), `son_clean.tdp` (pas de distorsion), `son_jazz.tdp` (doux), `son_blues.tdp` (legato + gate), `guitar_zombies_metal.tdp`, `clean_boost.tdp`.
+Presets inclus (dossier `tdp/`) : `son_metal.tdp` (chug, gain élevé), `son_rock.tdp` (crunch), `son_clean.tdp` (pas de distorsion), `son_jazz.tdp` (doux), `son_blues.tdp` (legato + gate), `guitar_zombies_metal.tdp`, `clean_boost.tdp`.
 
 ---
 

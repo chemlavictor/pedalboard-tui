@@ -105,7 +105,7 @@ Une application C11 à **2 threads** qui :
 
 Une pédale par ligne (l'ordre = l'ordre en série), `param=valeur`, `#` = commentaire.
 
-Exemple `guitar_zombies_metal.tdp` (son métal, inclus dans le repo) :
+Exemple `tdp/guitar_zombies_metal.tdp` (son métal, inclus dans le repo) :
 ```
 booster level=2.0
 distortion gain=0.6
@@ -113,17 +113,19 @@ noise_gate threshold=-40
 volume level=0.8
 ```
 
-Charge : `tdp> load guitar_zombies_metal.tdp` (Tab complète les `.tdp`).
+Charge : `tdp> load tdp/guitar_zombies_metal.tdp` (Tab complète les `.tdp` du dossier courant ; lance `tdp` depuis `tdp/` ou passe le chemin relatif).
 
-### Presets inclus
+### Presets inclus (dossier `tdp/`)
 
 | Fichier | Son |
 |---------|-----|
-| `son_metal.tdp` | Metal / chug (gain élevé, tight) |
-| `son_rock.tdp` | Rock / crunch (gain moyen) |
-| `son_clean.tdp` | Clean (pas de distorsion) |
-| `son_jazz.tdp` | Jazz (gain faible, doux) |
-| `son_blues.tdp` | Blues (legato, gate) |
+| `tdp/son_metal.tdp` | Metal / chug (gain élevé, tight) |
+| `tdp/son_rock.tdp` | Rock / crunch (gain moyen) |
+| `tdp/son_clean.tdp` | Clean (pas de distorsion) |
+| `tdp/son_jazz.tdp` | Jazz (gain faible, doux) |
+| `tdp/son_blues.tdp` | Blues (legato, gate) |
+| `tdp/clean_boost.tdp` | Clean boost (gain à fond, pas de disto) |
+| `tdp/guitar_zombies_metal.tdp` | Metal « Zombies » (booster + high-gain + gate) |
 
 > Un **skill** `.pi/skills/tdp-presets/` aide un LLM à générer un `.tdp` à partir d'une description de son (ex. « son metal »).
 
@@ -212,6 +214,7 @@ pedalboard-tui/
 │   ├── test_dsp.c       ← tests DSP + catalogue + chaîne
 │   ├── test_tdp.c       ← tests parser .tdp
 │   └── test_wav.c       ← tests encodeur WAV
+├── tdp/                 ← presets de pédales (.tdp)
 ├── specs/               ← documentation de conception
 └── recordings/          ← (créé à l'usage) WAV horodatés
 ```
