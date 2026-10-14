@@ -18,17 +18,22 @@ Sommaire :
 
 #### Option A — Binaire précompilé (sans compiler)
 
-Chaque tag `v*` publie une **release GitHub** avec les binaires :
-`tdp-linux.tar.gz` (Linux x86_64) et `tdp-windows.zip` (Windows x86_64,
-avec `portaudio.dll` incluse).
+Chaque tag de version (`YYYY.MM.DD.XX`) publie une **release GitHub** avec
+les binaires : `tdp-linux.tar.gz` (Linux x86_64) et `tdp-windows.zip`
+(Windows x86_64, avec `portaudio.dll` incluse).
 
 - **Linux** : `apt install -y libportaudio2` (runtime), puis télécharger la
   release, dézipper, `./tdp`.
 - **Windows** : télécharger `tdp-windows.zip`, dézipper, double-cliquer
   `tdp.exe`.
 
-Pas de MSYS2 ni de compiler requis. Voir le [README](../README.md) pour les
-détails.
+Pas de MSYS2 ni de compiler requis. Le binaire affiche sa version au
+démarrage : `[build YYYY.MM.DD-hash]`.
+
+**Versioning** : les releases sont versionnées par date, au format
+`YYYY.MM.DD.XX` (date + séquence du jour, ex. `2026.10.14.01`).
+Voir le [README](../README.md) pour la liste des releases.
+
 
 #### Option B — Compiler depuis le source (Linux / macOS / WSL)
 

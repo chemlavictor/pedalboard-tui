@@ -28,9 +28,17 @@ Expand-Archive tdp-windows.zip -DestinationPath .\tdp
 .\tdp\tdp.exe
 ```
 
-> Pas de MSYS2 ni de compiler requis. `help` affiche le hash git du build.
+> Pas de MSYS2 ni de compiler requis. Le binaire affiche sa version au démarrage : `[build YYYY.MM.DD-hash]`.
 
-Chaîne de pédales audio temps réel (C11 + PortAudio), pilotée par un **shell de commandes**. Plus de TUI/ncurses : tout se fait au clavier via des commandes texte (`load`, `start`, `record`, ...).
+### Versioning
+
+Les releases sont versionnées par **date** : `YYYY.MM.DD.XX` (date + séquence du jour). Exemple : `2026.10.14.01` = 1ère release du 14 octobre 2026. Chaque tag déclenche le build CI et publie une release GitHub avec les binaires Linux + Windows.
+
+### Releases
+
+| Version | Date | Contenu |
+|---------|------|---------|
+| [`2026.10.14.01`](https://github.com/chemlavictor/pedalboard-tui/releases/tag/2026.10.14.01) | 2026-10-14 | Première release binaire : TPD CLI (Linux + Windows), 5 pédales, accordeur, enregistrement WAV, mode serveur TCP, page web. |
 
 **Supporte Windows ET Linux avec le même code.**
 

@@ -17,7 +17,35 @@ Règles à suivre **à chaque commit et pour l'organisation du travail** dans ce
 - En cas d'interruption (session d'agent coupée, crash), le travail pushé est en sécurité.
 - Les petits ajustements incrémentaux n'obligent pas à push à chaque ligne, mais un bloc de travail terminé = push.
 
-## 3. Format du message de commit
+## 3. Versioning (releases)
+
+- **Format des tags de release** : `YYYY.MM.DD.XX` (date + séquence du jour).
+  - `YYYY.MM.DD` = date de la release (UTC).
+  - `XX` = compteur de release dans la journée, 01, 02, 03… (2 chiffres).
+  - Exemples : `2026.10.14.01` (1ère release du 14 oct 2026),
+    `2026.10.14.02` (2e release du même jour), `2026.10.15.01`.
+- **Créer une release** :
+  ```
+  git tag -a 2026.10.14.01 -m "🔧 Chore: release 2026.10.14.01"
+  git push origin 2026.10.14.01
+  ```
+  Le push du tag déclenche le workflow `.github/workflows/build.yml`
+  (pattern `tags: ['[0-9]*.[0-9]*.[0-9]*.[0-9]*']`) qui compile Linux +
+  Windows et publie la release GitHub avec les 2 binaires.
+- **Pas de préfixe `v`** : les tags sont purs numériques, sans `v`.
+- **Pas de versioning sémantique (semver)** : on versionne par date,
+  c'est un projet solo / hobbiste, la date est plus parlante qu'un
+  `0.1.2`. Le hash git (affiché par le binaire) reste la référence
+  exacte du build.
+- **Le binaire affiche sa version** au démarrage :
+  `TPD — Terminal Pedal Board (CLI) [build YYYY.MM.DD-hash]`.
+  La date vient de `date +%Y.%m.%d` au moment du `make` (Makefile),
+  le hash de `git rev-parse --short HEAD`.
+- **La doc (README, documentation) doit lister les releases** dans
+  l'ordre chronologique avec leur contenu, comme un changelog.
+
+
+## 4. Format du message de commit
 
 Le message de commit **doit** respecter ces règles :
 
@@ -85,7 +113,7 @@ Exemple de documentation :
 - Corps avec des lignes > 72 caractères (hors mots indivisibles).
 - Puces avec `*` ou `+` : toujours `-`.
 
-## 4. Rappels projet
+## 5. Rappels projet
 
 - Build & tests : `make && make test` (sans carte son). `make check` sous Valgrind.
 - Le catalogue de pédales (`src/pedals.c`) est la source de vérité : une nouvelle pédale = une entrée dans ce fichier + recompile.
