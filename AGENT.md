@@ -90,5 +90,20 @@ Exemple de documentation :
 - Build & tests : `make && make test` (sans carte son). `make check` sous Valgrind.
 - Le catalogue de pédales (`src/pedals.c`) est la source de vérité : une nouvelle pédale = une entrée dans ce fichier + recompile.
 - Contraintes du thread audio (temps réel) : pas de `malloc`/`free`, pas d'I/O, pas de lock ; mémoire statique, `stdatomic` lock-free uniquement. Tout changement dans `src/audio.c` doit respecter ces contraintes.
-- La doc (`README.md`, `docs/documentation.md`) est mise à jour **dans le même commit** que les changements de comportement qu'elle documente.
-- Voir `specs.md` pour les spécifications techniques et `docs/documentation.md` pour la doc utilisateur.
+- **Règle obligatoire** : `README.md` (racine) et `docs/documentation.md`
+  doivent être **maintenus à jour à chaque commit** qui change un comportement
+  utilisateur visible. Si le commit touche l'un des points ci-dessous, la doc
+  est mise à jour **dans le même commit** (pas en différé, pas dans un
+  commit séparé) :
+  - une nouvelle commande du shell, ou un changement d'arg/alias ;
+  - une nouvelle pédale, un param, une plage, un défaut ;
+  - un changement d'installation, de build, de dépendance ;
+  - un changement de comportement audio (sample rate, buffer, thread, VU) ;
+  - un déplacement / ajout / suppression de fichier ou de dossier (l'arbre
+    du projet dans le README est mis à jour dans le même commit) ;
+  - un changement de format de fichier (`.tdp`, WAV, historique).
+- Après un commit, vérifier que les exemples de commandes de la doc
+  (`load`, `in`, `out`, …) reflètent les chemins et noms actuels. Un exemple
+  qui pointe vers un fichier qui n'existe plus est un bug de doc.
+- Voir `specs.md` pour les spécifications techniques et
+  `docs/documentation.md` pour la doc utilisateur.
