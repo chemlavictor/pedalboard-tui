@@ -15,9 +15,10 @@ TEST_TPD := $(BUILD)/test_tdp
 TEST_WAV := $(BUILD)/test_wav
 TEST_TUNER := $(BUILD)/test_tuner
 
-# Hash git court (7 chars) injecté dans le binaire.
+# Hash git court (7 chars) + date du build (YYYY.MM.DD) injectés dans le binaire.
 GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "nogit")
-VERSION_FLAG := -DTPD_GIT_HASH=\"$(GIT_HASH)\"
+BUILD_DATE := $(shell date +%Y.%m.%d 2>/dev/null || echo "1970.01.01")
+VERSION_FLAG := -DTPD_GIT_HASH=\"$(GIT_HASH)\" -DTPD_BUILD_DATE=\"$(BUILD_DATE)\"
 
 # Cœur commun (CLI) — réutilisé identique sur Linux et Windows.
 CORE_SRCS := $(SRC_DIR)/main.c $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c \

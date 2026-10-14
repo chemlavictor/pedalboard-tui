@@ -82,6 +82,7 @@ static void shell_raw_off(void) {
 #include "tuner.h"
 #include "devtest.h"
 #include "in_test.h"
+#include "version.h"
 
 #define LINE_MAX 512
 
@@ -1059,7 +1060,8 @@ void shell_run(const char *script_path) {
   if (interactive) {
     shell_raw_on(); /* capter Tab/Backspace (Windows) */
     hist_load();   /* recharge l'historique persistant (.tdp_history) */
-    printf("TPD — Terminal Pedal Board (CLI). Tapez 'help' pour l'aide, 'quit' pour sortir.\n");
+    printf("TPD — Terminal Pedal Board (CLI) [build %s-%s]. Tapez 'help' pour l'aide, 'quit' pour sortir.\n",
+           TPD_BUILD_DATE, TPD_GIT_HASH);
   }
 
   char line[LINE_MAX];

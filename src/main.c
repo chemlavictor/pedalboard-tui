@@ -10,10 +10,8 @@
 
 #include "shell.h"
 #include "server.h"
+#include "version.h"
 
-#ifndef TPD_GIT_HASH
-#define TPD_GIT_HASH "nogit"
-#endif
 
 int main(int argc, char **argv) {
   /* Mode serveur : tdp --serve <port> */
