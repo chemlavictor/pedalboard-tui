@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TDP — Terminal Distortion Pedal</title>
+  <title>TPD — Terminal Pedal Board</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -65,7 +65,7 @@
   </style>
 </head>
 <body>
-  <h1>TDP — Terminal Distortion Pedal</h1>
+  <h1>TPD — Terminal Pedal Board</h1>
   <div class="subtitle">Shell web — VU temps réel + commandes</div>
 
   <div id="vu">
@@ -74,7 +74,7 @@
     VU out : <span class="vu-bar"><span class="vu-fill" id="vu-out"></span></span> <span id="vu-out-val">0%</span>
   </div>
 
-  <div id="output">TDP Web — tape une commande ci-dessous (ex: help, pedals, load son_metal.tdp, start)</div>
+  <div id="output">TPD Web — tape une commande ci-dessous (ex: help, pedals, load son_metal.tdp, start)</div>
 
   <div class="input-row">
     <span class="prompt">tdp&gt;</span>
@@ -188,11 +188,11 @@
       .then(r => r.json())
       .then(d => {
         if (!d.connected) {
-          appendOutput("ATTENTION : serveur TDP non connecte.");
+          appendOutput("ATTENTION : serveur TPD non connecte.");
         }
       })
       .catch(() => {
-        appendOutput("ATTENTION : serveur TDP injoignable.");
+        appendOutput("ATTENTION : serveur TPD injoignable.");
       });
   </script>
 </body>

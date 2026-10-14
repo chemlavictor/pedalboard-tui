@@ -1,4 +1,4 @@
-/* Serveur TCP TDP : ecoute les commandes et envoie l'etat (VU).
+/* Serveur TCP TPD : ecoute les commandes et envoie l'etat (VU).
  * Execute les commandes IN-PROCESS (l'etat est conserve).
  * Redirige stdout vers un fichier temporaire pour capturer la sortie.
  * Envoie l'etat (VU) periodiquement.
@@ -126,14 +126,14 @@ static int filter_alsa(char *out, int len) {
   return flen;
 }
 
-int tdp_server_run(int port) {
+int tpd_server_run(int port) {
   /* Initialise l'etat audio + pedales (in-process). */
   shell_server_init();
 
 #ifdef _WIN32
   WSADATA wsa;
   if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-    printf("TDP: WSAStartup echec\n");
+    printf("TPD: WSAStartup echec\n");
     return -1;
   }
 #endif
@@ -141,7 +141,7 @@ int tdp_server_run(int port) {
   /* Cree le socket. */
   sock_t srv = socket(AF_INET, SOCK_STREAM, 0);
   if (srv == SOCKET_INVALID_VAL) {
-    printf("TDP: socket echec\n");
+    printf("TPD: socket echec\n");
     return -1;
   }
 
@@ -154,33 +154,33 @@ int tdp_server_run(int port) {
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
   addr.sin_port = htons((unsigned short)port);
   if (bind(srv, (struct sockaddr *)&addr, sizeof addr) != 0) {
-    printf("TDP: bind echec (port %d deja utilise?)\n", port);
+    printf("TPD: bind echec (port %d deja utilise?)\n", port);
     closesock(srv);
     return -1;
   }
 
   if (listen(srv, 1) != 0) {
-    printf("TDP: listen echec\n");
+    printf("TPD: listen echec\n");
     closesock(srv);
     return -1;
   }
 
-  printf("TDP: serveur demarre sur le port %d\n", port);
+  printf("TPD: serveur demarre sur le port %d\n", port);
   printf("    (attend une connexion...)\n");
   fflush(stdout);
 
   /* Accepte la connexion. */
   sock_t client = accept(srv, NULL, NULL);
   if (client == SOCKET_INVALID_VAL) {
-    printf("TDP: accept echec\n");
+    printf("TPD: accept echec\n");
     closesock(srv);
     return -1;
   }
-  printf("TDP: client connecte\n");
+  printf("TPD: client connecte\n");
   fflush(stdout);
 
   /* Envoie le message de bienvenue. */
-  sock_sendline(client, "TDP — Terminal Distortion Pedal (serveur TCP)\n");
+  sock_sendline(client, "TPD — Terminal Pedal Board (serveur TCP)\n");
   sock_sendline(client, "Tapez 'help' pour l'aide, 'quit' pour sortir.\n");
 
   /* Boucle : lit les commandes, execute in-process, repond. */
@@ -198,7 +198,7 @@ int tdp_server_run(int port) {
         while (*s == ' ' || *s == '\t') ++s;
         if (*s != '\0') {
           if (strcmp(s, "quit") == 0 || strcmp(s, "exit") == 0) {
-            sock_sendline(client, "TDP: au revoir.\n");
+            sock_sendline(client, "TPD: au revoir.\n");
             running = 0;
             break;
           }
@@ -231,6 +231,6 @@ int tdp_server_run(int port) {
   WSACleanup();
 #endif
 
-  printf("TDP: serveur arrete\n");
+  printf("TPD: serveur arrete\n");
   return 0;
 }

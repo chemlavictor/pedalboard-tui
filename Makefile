@@ -1,4 +1,4 @@
-# TDP — Terminal Distortion Pedal (CLI)
+# TPD — Terminal Pedal Board (CLI)
 # C11, 2 threads (audio RT + main CLI), PortAudio. UI : shell de commandes (portable).
 
 CC      ?= cc
@@ -11,13 +11,13 @@ INC_DIR := include
 BUILD   := build
 TARGET  := $(BUILD)/tdp
 TEST    := $(BUILD)/test_dsp
-TEST_TDP := $(BUILD)/test_tdp
+TEST_TPD := $(BUILD)/test_tdp
 TEST_WAV := $(BUILD)/test_wav
 TEST_TUNER := $(BUILD)/test_tuner
 
 # Hash git court (7 chars) injecté dans le binaire.
 GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "nogit")
-VERSION_FLAG := -DTDP_GIT_HASH=\"$(GIT_HASH)\"
+VERSION_FLAG := -DTPD_GIT_HASH=\"$(GIT_HASH)\"
 
 # Cœur commun (CLI) — réutilisé identique sur Linux et Windows.
 CORE_SRCS := $(SRC_DIR)/main.c $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c \
@@ -52,16 +52,16 @@ run: $(TARGET)
 	./$(TARGET)
 
 # Tests DSP + catalogue : pas de PortAudio, tourne sans carte son ni TTY.
-test: $(TEST) $(TEST_TDP) $(TEST_WAV) $(TEST_TUNER)
+test: $(TEST) $(TEST_TPD) $(TEST_WAV) $(TEST_TUNER)
 	./$(TEST)
-	./$(TEST_TDP)
+	./$(TEST_TPD)
 	./$(TEST_WAV)
 	./$(TEST_TUNER)
 
 $(TEST): tests/test_dsp.c $(INC_DIR)/dsp.h $(INC_DIR)/pedals.h $(SRC_DIR)/dsp.c $(SRC_DIR)/pedals.c | $(BUILD)
 	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_dsp.c $(SRC_DIR)/dsp.c $(SRC_DIR)/pedals.c -lm
 
-$(TEST_TDP): tests/test_tdp.c $(INC_DIR)/shell.h $(INC_DIR)/pedals.h $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c $(SRC_DIR)/wav.c $(SRC_DIR)/audio.c $(SRC_DIR)/tuner.c $(SRC_DIR)/devtest.c $(SRC_DIR)/in_test.c | $(BUILD)
+$(TEST_TPD): tests/test_tdp.c $(INC_DIR)/shell.h $(INC_DIR)/pedals.h $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c $(SRC_DIR)/wav.c $(SRC_DIR)/audio.c $(SRC_DIR)/tuner.c $(SRC_DIR)/devtest.c $(SRC_DIR)/in_test.c | $(BUILD)
 	$(CC) -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) -o $@ tests/test_tdp.c $(SRC_DIR)/shell.c $(SRC_DIR)/pedals.c $(SRC_DIR)/wav.c $(SRC_DIR)/audio.c $(SRC_DIR)/tuner.c $(SRC_DIR)/devtest.c $(SRC_DIR)/in_test.c -lportaudio -lm
 
 $(TEST_WAV): tests/test_wav.c $(INC_DIR)/wav.h $(SRC_DIR)/wav.c | $(BUILD)

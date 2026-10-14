@@ -1,4 +1,4 @@
-/* Shell de commandes TDP CLI.
+/* Shell de commandes TPD CLI.
  * Mode interactif : prompt "tdp> " sur stdin.
  * Mode script : lit un fichier ligne par ligne, pas de prompt, termine a la fin.
  * Portable Windows + Linux : uniquement C standard (fgets/printf/fopen/time/strftime/mkdir).
@@ -91,7 +91,7 @@ static chain_t g_chain = {0};
 /* Etat audio partagé + ring buffer d'enregistrement (statiques, RT-safe). */
 static audio_shared g_sh;
 static rec_ring g_ring;
-static float g_rec_buf[TDP_REC_CAPACITY]; /* ~60 s mono 48 kHz */
+static float g_rec_buf[TPD_REC_CAPACITY]; /* ~60 s mono 48 kHz */
 
 /* Handlers des commandes (implémentés plus bas ou dans d'autres modules).
  * Retourne -1 pour demander la sortie du shell. */
@@ -148,7 +148,7 @@ static const int N_CMDS = (int)(sizeof g_cmds / sizeof g_cmds[0]);
 static int cmd_help(int argc, char **argv) {
   (void)argc; (void)argv;
   printf(
-    "TDP — Terminal Distortion Pedal (CLI)\n"
+    "TPD — Terminal Pedal Board (CLI)\n"
     "Chaine de pedales audio temps reel, pilotee par commandes.\n"
     "  Tab = auto-completion | Fleches haut/bas = historique | Ctrl+C = quit | Ctrl+L = nettoyer l'ecran\n"
     "\n"
@@ -210,7 +210,7 @@ static int cmd_pedals(int argc, char **argv) {
 static int cmd_info(int argc, char **argv) {
   if (argc < 2) { printf("usage: info <nom>\n"); return 0; }
   const pedal_def *d = pedal_find(argv[1]);
-  if (!d) { printf("TDP: pedale inconnue '%s'\n", argv[1]); return 0; }
+  if (!d) { printf("TPD: pedale inconnue '%s'\n", argv[1]); return 0; }
   printf("%s — %s\n", d->name, d->desc);
   int has_params = 0;
   for (const pedal_param *p = d->params; p && p->name; ++p) {
@@ -254,11 +254,11 @@ int parse_tdp_line(const char *line, int lineno, chain_t *c) {
 
   const pedal_def *def = pedal_find(name);
   if (!def) {
-    printf("TDP: pedale inconnue '%s' (ligne %d)\n", name, lineno);
+    printf("TPD: pedale inconnue '%s' (ligne %d)\n", name, lineno);
     return -1;
   }
   if (c->len >= MAX_CHAIN) {
-    printf("TDP: chaine pleine (max %d pedales) a la ligne %d\n", MAX_CHAIN, lineno);
+    printf("TPD: chaine pleine (max %d pedales) a la ligne %d\n", MAX_CHAIN, lineno);
     return -1;
   }
 
@@ -277,7 +277,7 @@ int parse_tdp_line(const char *line, int lineno, chain_t *c) {
     /* debut du token param */
     char *eq = strchr(tok, '=');
     if (!eq) {
-      printf("TDP: param invalide '%s' (ligne %d)\n", tok, lineno);
+      printf("TPD: param invalide '%s' (ligne %d)\n", tok, lineno);
       return -1;
     }
     *eq = '\0';
@@ -290,14 +290,14 @@ int parse_tdp_line(const char *line, int lineno, chain_t *c) {
       if (strcmp(p->name, pname) == 0) {
         found = 1;
         /* Clamp si hors plage + avertissement. */
-        if (val < p->minv) { printf("TDP: %s=%g clampé a %g (ligne %d)\n", pname, val, p->minv, lineno); val = p->minv; }
-        if (val > p->maxv) { printf("TDP: %s=%g clampé a %g (ligne %d)\n", pname, val, p->maxv, lineno); val = p->maxv; }
+        if (val < p->minv) { printf("TPD: %s=%g clampé a %g (ligne %d)\n", pname, val, p->minv, lineno); val = p->minv; }
+        if (val > p->maxv) { printf("TPD: %s=%g clampé a %g (ligne %d)\n", pname, val, p->maxv, lineno); val = p->maxv; }
         st.v[p - def->params] = val;
         break;
       }
     }
     if (!found) {
-      printf("TDP: parametre inconnu '%s' pour '%s' (ligne %d)\n", pname, name, lineno);
+      printf("TPD: parametre inconnu '%s' pour '%s' (ligne %d)\n", pname, name, lineno);
       return -1;
     }
     /* Passe au token suivant. */
@@ -316,7 +316,7 @@ static int cmd_load(int argc, char **argv) {
   if (argc < 2) { printf("usage: load <fichier>\n"); return 0; }
   FILE *f = fopen(argv[1], "r");
   if (!f) {
-    printf("TDP: fichier introuvable: %s\n", argv[1]);
+    printf("TPD: fichier introuvable: %s\n", argv[1]);
     return 0;
   }
   chain_t c = {0};
@@ -328,11 +328,11 @@ static int cmd_load(int argc, char **argv) {
   }
   fclose(f);
   if (err) {
-    printf("TDP: chaine non chargee (erreur dans %s)\n", argv[1]);
+    printf("TPD: chaine non chargee (erreur dans %s)\n", argv[1]);
     return 0;
   }
   g_chain = c;
-  printf("TDP: chaine chargee de '%s' (%d pedale%s)\n", argv[1], c.len, c.len > 1 ? "s" : "");
+  printf("TPD: chaine chargee de '%s' (%d pedale%s)\n", argv[1], c.len, c.len > 1 ? "s" : "");
   return 0;
 }
 
@@ -367,14 +367,14 @@ static int cmd_reset(int argc, char **argv) {
         g_chain.state[i].v[pi] = p->def;
       }
     }
-    printf("TDP: params reset aux defauts du catalogue\n");
+    printf("TPD: params reset aux defauts du catalogue\n");
     did_something = 1;
   }
   /* Reset aussi les devices in/out aux defauts (-1). */
   if (g_in_dev != -1 || g_out_dev != -1) {
     g_in_dev = -1;
     g_out_dev = -1;
-    printf("TDP: entree/sortie reset au defaut (systeme)\n");
+    printf("TPD: entree/sortie reset au defaut (systeme)\n");
     did_something = 1;
   }
   if (!did_something) printf("(rien a reset)\n");
@@ -400,11 +400,11 @@ static void safe_name(const char *in, char *out, int outsz) {
 static int cmd_in(int argc, char **argv) {
   if (argc >= 2) {
     g_in_dev = atoi(argv[1]);
-    printf("TDP: entree %d selectionnee\n", g_in_dev);
+    printf("TPD: entree %d selectionnee\n", g_in_dev);
     return 0;
   }
   /* Listage. */
-  tdp_device devs[TDP_MAX_DEVICES];
+  tpd_device devs[TPD_MAX_DEVICES];
   int n = audio_list_devices(devs);
   if (n == 0) { printf("(aucune entree detectee)\n"); return 0; }
   printf("Entrees audio :\n");
@@ -421,10 +421,10 @@ static int cmd_in(int argc, char **argv) {
 static int cmd_out(int argc, char **argv) {
   if (argc >= 2) {
     g_out_dev = atoi(argv[1]);
-    printf("TDP: sortie %d selectionnee\n", g_out_dev);
+    printf("TPD: sortie %d selectionnee\n", g_out_dev);
     return 0;
   }
-  tdp_device devs[TDP_MAX_DEVICES];
+  tpd_device devs[TPD_MAX_DEVICES];
   int n = audio_list_devices(devs);
   if (n == 0) { printf("(aucune sortie detectee)\n"); return 0; }
   printf("Sorties audio :\n");
@@ -441,23 +441,23 @@ static int cmd_out(int argc, char **argv) {
 static int cmd_start(int argc, char **argv) {
   (void)argc; (void)argv;
   if (atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
-    printf("TDP: deja en cours (stop d'abord)\n");
+    printf("TPD: deja en cours (stop d'abord)\n");
     return 0;
   }
   /* Active la chaine chargee dans l'audio. */
   audio_set_chain(&g_chain);
   if (!audio_start(g_in_dev, g_out_dev)) {
-    printf("TDP: audio indisponible (portaudio.dll introuvable ? ou aucune carte?)\n");
+    printf("TPD: audio indisponible (portaudio.dll introuvable ? ou aucune carte?)\n");
     return 0;
   }
-  printf("TDP: flux demarre (entree %d, sortie %d)\n", g_in_dev, g_out_dev);
+  printf("TPD: flux demarre (entree %d, sortie %d)\n", g_in_dev, g_out_dev);
   return 0;
 }
 
 static int cmd_stop(int argc, char **argv) {
   (void)argc; (void)argv;
   audio_stop();
-  printf("TDP: flux arrete\n");
+  printf("TPD: flux arrete\n");
   return 0;
 }
 
@@ -465,16 +465,16 @@ static int cmd_stop(int argc, char **argv) {
 static int cmd_record(int argc, char **argv) {
   (void)argc; (void)argv;
   if (!atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
-    printf("TDP: rien a enregistrer (flux non demarre)\n");
+    printf("TPD: rien a enregistrer (flux non demarre)\n");
     return 0;
   }
   if (atomic_load_explicit(&g_sh.recording, memory_order_relaxed)) {
-    printf("TDP: deja en train d'enregistrer\n");
+    printf("TPD: deja en train d'enregistrer\n");
     return 0;
   }
   audio_rec_reset();
   atomic_store_explicit(&g_sh.recording, true, memory_order_relaxed);
-  printf("TDP: enregistrement demarre (tapez <Entree> pour stopper + sauvegarder)\n");
+  printf("TPD: enregistrement demarre (tapez <Entree> pour stopper + sauvegarder)\n");
   return 0;
 }
 
@@ -538,7 +538,7 @@ static int g_tuner_on = 0;
 static int cmd_watch(int argc, char **argv) {
   (void)argc; (void)argv;
   g_watch = !g_watch;
-  printf("TDP: watch %s\n", g_watch ? "ON (affichage continu, 'watch' pour arreter)" : "OFF");
+  printf("TPD: watch %s\n", g_watch ? "ON (affichage continu, 'watch' pour arreter)" : "OFF");
   return 0;
 }
 
@@ -571,19 +571,19 @@ static int cmd_test(int argc, char **argv) {
   (void)argc; (void)argv;
   if (g_tuner_on) {
     g_tuner_on = 0;
-    printf("\nTDP: accordeur ARRETE\n");
+    printf("\nTPD: accordeur ARRETE\n");
     return 0;
   }
   if (g_in_dev < 0) {
-    printf("TDP: selectionne d'abord l'entree (in <numero>) pour l'accordeur\n");
+    printf("TPD: selectionne d'abord l'entree (in <numero>) pour l'accordeur\n");
     return 0;
   }
   if (!atomic_load_explicit(&g_sh.running, memory_order_relaxed)) {
-    printf("TDP: demarre le flux d'abord (start) pour utiliser l'accordeur\n");
+    printf("TPD: demarre le flux d'abord (start) pour utiliser l'accordeur\n");
     return 0;
   }
   g_tuner_on = 1;
-  printf("TDP: accordeur ON — joue une note. 'q' ou Entree pour arreter, Ctrl+C pour quitter.\n");
+  printf("TPD: accordeur ON — joue une note. 'q' ou Entree pour arreter, Ctrl+C pour quitter.\n");
   return 0;
 }
 
@@ -620,13 +620,13 @@ static void record_stop_and_save(void) {
   /* Lit le ring buffer (head = position actuelle, count = nb ecrits). */
   unsigned head = audio_rec_head();
   unsigned long long count = atomic_load_explicit(&g_ring.count, memory_order_relaxed);
-  unsigned cap = TDP_REC_CAPACITY;
+  unsigned cap = TPD_REC_CAPACITY;
   unsigned long n = (count > cap) ? cap : (unsigned long)count;
 
   /* Reconstitue le signal dans l'ordre (du plus ancien au plus recent).
    * Le ring ecrit en head ; les derniers n echantillons sont les plus recents.
    * On part de (head - n) % cap et on lit n echantillons. */
-  static float tmp[TDP_REC_CAPACITY]; /* tampon statique pour la sauvegarde */
+  static float tmp[TPD_REC_CAPACITY]; /* tampon statique pour la sauvegarde */
   unsigned start = (head > n) ? (head - n) : (head + cap - n);
   for (unsigned long i = 0; i < n; ++i) {
     tmp[i] = g_ring.buf[(start + i) % cap];
@@ -634,15 +634,15 @@ static void record_stop_and_save(void) {
 
   char path[512];
   if (wav_timestamped_name(path, sizeof path) != 0) {
-    printf("TDP: impossible de generer le nom du fichier\n");
+    printf("TPD: impossible de generer le nom du fichier\n");
     return;
   }
   double sr = 48000.0; /* TODO: utiliser le sr reel (a ajouter dans audio.h) */
   if (wav_write(path, tmp, (long)n, sr) == 0) {
     double dur = (double)n / sr;
-    printf("TDP: enregistrement sauvegarde : %s (%.1f s)\n", path, dur);
+    printf("TPD: enregistrement sauvegarde : %s (%.1f s)\n", path, dur);
   } else {
-    printf("TDP: echec de l'ecriture de %s\n", path);
+    printf("TPD: echec de l'ecriture de %s\n", path);
   }
   audio_rec_reset();
 }
@@ -1015,7 +1015,7 @@ static void exec_line(char *line, int interactive) {
       return;
     }
   }
-  printf("TDP: commande inconnue '%s' (help pour la liste)\n", name);
+  printf("TPD: commande inconnue '%s' (help pour la liste)\n", name);
   (void)interactive;
 }
 
@@ -1051,7 +1051,7 @@ void shell_run(const char *script_path) {
   if (!interactive) {
     f = fopen(script_path, "r");
     if (!f) {
-      fprintf(stderr, "TDP: impossible d'ouvrir le script '%s'\n", script_path);
+      fprintf(stderr, "TPD: impossible d'ouvrir le script '%s'\n", script_path);
       return;
     }
   }
@@ -1059,7 +1059,7 @@ void shell_run(const char *script_path) {
   if (interactive) {
     shell_raw_on(); /* capter Tab/Backspace (Windows) */
     hist_load();   /* recharge l'historique persistant (.tdp_history) */
-    printf("TDP — Terminal Distortion Pedal (CLI). Tapez 'help' pour l'aide, 'quit' pour sortir.\n");
+    printf("TPD — Terminal Pedal Board (CLI). Tapez 'help' pour l'aide, 'quit' pour sortir.\n");
   }
 
   char line[LINE_MAX];
@@ -1090,7 +1090,7 @@ void shell_run(const char *script_path) {
         if (k == 27) { tdp_getch(); tdp_getch(); } /* degage sequence */
         if (k == 'q' || k == 'Q' || k == '\n' || k == '\r') {
           g_tuner_on = 0;
-          printf("\nTDP: accordeur ARRETE\n");
+          printf("\nTPD: accordeur ARRETE\n");
         }
         /* Les autres touches : ignorees (on reste en mode tuner). */
       }
@@ -1116,5 +1116,5 @@ void shell_run(const char *script_path) {
   }
 
   if (f) fclose(f);
-  if (interactive) printf("\nTDP: au revoir.\n");
+  if (interactive) printf("\nTPD: au revoir.\n");
 }

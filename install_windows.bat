@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  TDP - Installation Windows
+REM  TPD - Installation Windows
 REM
 REM  - Si MSYS2 + gcc sont deja presentes : compile dist\ directement.
 REM  - Sinon : ouvre le shell MSYS2 MINGW64 avec les instructions
@@ -18,7 +18,7 @@ set "MROOT=%ROOT:C:\=/c/%"
 set "MROOT=%MROOT:\=/%"
 
 echo ============================================================
-echo  TDP - Installation Windows
+echo  TPD - Installation Windows
 echo ============================================================
 cd /d "%ROOT%" || (echo Erreur: impossible de changer de dossier. & exit /b 1)
 echo [info] repo : %ROOT%

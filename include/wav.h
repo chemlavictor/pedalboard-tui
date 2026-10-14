@@ -1,6 +1,6 @@
 /* Encodeur WAV PCM 16-bit mono (portable, sans dépendance). */
-#ifndef TDP_WAV_H
-#define TDP_WAV_H
+#ifndef TPD_WAV_H
+#define TPD_WAV_H
 
 /* Écrit un fichier WAV PCM 16-bit mono.
  * samples : buffer float (post-pédales), n : nb d'échantillons, sr : Hz.
@@ -12,4 +12,4 @@ int wav_write(const char *path, const float *samples, long n, double sr);
  * Retourne 0 si ok. */
 int wav_timestamped_name(char *out, int out_len);
 
-#endif /* TDP_WAV_H */
+#endif /* TPD_WAV_H */

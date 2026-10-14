@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  TDP - BUILD sur Windows
+REM  TPD - BUILD sur Windows
 REM  - Si MSYS2/MinGW gcc + PortAudio sont dans PATH : compile tdp.exe -> dist/
 REM  - Sinon : message clair + instructions.
 REM  Ce script ne fonctionne que sous Windows NATIF (pas WSL, pas \\wsl.localhost).

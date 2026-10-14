@@ -93,7 +93,7 @@ static int audio_callback(const void *in, void *out, unsigned long n,
   if (atomic_load_explicit(&g_sh->recording, memory_order_relaxed)) {
     unsigned head = g_ring->head;
     float *buf = g_ring->buf;
-    unsigned cap = TDP_REC_CAPACITY;
+    unsigned cap = TPD_REC_CAPACITY;
     for (unsigned i = 0; i < n; ++i) {
       buf[head] = out_buf[i];
       head = (head + 1) % cap;
@@ -193,7 +193,7 @@ void audio_stop(void) {
   }
 }
 
-int audio_list_devices(tdp_device *out) {
+int audio_list_devices(tpd_device *out) {
   /* Assure que PortAudio est initialise (sinon Pa_GetDeviceCount retourne -1). */
   if (!g_pa_inited) {
     if (Pa_Initialize() != paNoError) return 0;
@@ -202,21 +202,21 @@ int audio_list_devices(tdp_device *out) {
   int n = 0;
   int max = Pa_GetDeviceCount();
   if (max < 0) return 0;
-  if (max > TDP_MAX_DEVICES) max = TDP_MAX_DEVICES;
+  if (max > TPD_MAX_DEVICES) max = TPD_MAX_DEVICES;
   for (int i = 0; i < max; ++i) {
     const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
     if (!info) continue;
     out[n].id = i;
-    strncpy(out[n].name, info->name, TDP_DEVICE_NAME_LEN - 1);
-    out[n].name[TDP_DEVICE_NAME_LEN - 1] = '\0';
+    strncpy(out[n].name, info->name, TPD_DEVICE_NAME_LEN - 1);
+    out[n].name[TPD_DEVICE_NAME_LEN - 1] = '\0';
     out[n].is_input = (info->maxInputChannels > 0);
     out[n].is_output = (info->maxOutputChannels > 0);
     /* Nom du host API (MME, DirectSound, WASAPI...). */
     if (info->hostApi >= 0) {
       const PaHostApiInfo *api_info = Pa_GetHostApiInfo(info->hostApi);
       if (api_info) {
-        strncpy(out[n].api, api_info->name, TDP_DEVICE_API_LEN - 1);
-        out[n].api[TDP_DEVICE_API_LEN - 1] = '\0';
+        strncpy(out[n].api, api_info->name, TPD_DEVICE_API_LEN - 1);
+        out[n].api[TPD_DEVICE_API_LEN - 1] = '\0';
       } else {
         strcpy(out[n].api, "?");
       }

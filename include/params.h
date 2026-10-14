@@ -1,5 +1,5 @@
-#ifndef TDP_PARAMS_H
-#define TDP_PARAMS_H
+#ifndef TPD_PARAMS_H
+#define TPD_PARAMS_H
 
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -26,12 +26,12 @@ typedef struct {
   _Atomic long sr;            /* Hz réel */
   _Atomic long frame_buffer;  /* échantillons / bloc réel */
   _Atomic bool pa_ok;         /* statut PortAudio */
-} tdp_params;
+} tpd_params;
 
 /* Instance unique, définie dans params.c. */
-extern tdp_params P;
+extern tpd_params P;
 
 /* Pose les valeurs par défaut (gain 0.5, master 0.75, autres 0/false). */
 void params_init(void);
 
-#endif /* TDP_PARAMS_H */
+#endif /* TPD_PARAMS_H */

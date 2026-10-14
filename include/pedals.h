@@ -2,8 +2,8 @@
  * Source de vérité pour le runtime (pedals/info) et pour le prompt LLM.
  * Une nouvelle pédale = ajouter une entrée dans src/pedals.c + make.
  */
-#ifndef TDP_PEDALS_H
-#define TDP_PEDALS_H
+#ifndef TPD_PEDALS_H
+#define TPD_PEDALS_H
 
 #include <stdbool.h>
 
@@ -51,4 +51,4 @@ int pedals_count(void);
 /* Applique toute la chaîne à un buffer, dans l'ordre. */
 void chain_process(chain_t *c, float *buf, int n);
 
-#endif /* TDP_PEDALS_H */
+#endif /* TPD_PEDALS_H */

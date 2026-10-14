@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Serveur web TDP : relaye les commandes vers tdp --serve (TCP).
+"""Serveur web TPD : relaye les commandes vers tdp --serve (TCP).
 Lance tdp --serve en arriere-plan, puis relaye entre le navigateur
-(WebSocket) et TDP (TCP). Le VU est poll par le navigateur (status).
+(WebSocket) et TPD (TCP). Le VU est poll par le navigateur (status).
 
 Usage : python3 web/server.py [port_web]
 Puis ouvre http://localhost:port_web dans le navigateur.
@@ -17,12 +17,12 @@ import threading
 import time
 
 WEB_PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
-TDP_PORT = WEB_PORT + 1  # Port TCP de tdp --serve.
+TPD_PORT = WEB_PORT + 1  # Port TCP de tdp --serve.
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(SCRIPT_DIR)
 
-# Chemin du binaire TDP.
-TDP_BIN = None
+# Chemin du binaire TPD.
+TPD_BIN = None
 for candidate in [
     os.path.join(REPO_DIR, "build", "tdp"),
     os.path.join(REPO_DIR, "build", "tdp.exe"),
@@ -31,15 +31,15 @@ for candidate in [
     "tdp.exe",
 ]:
     if os.path.exists(candidate):
-        TDP_BIN = candidate
+        TPD_BIN = candidate
         break
 
-if TDP_BIN is None:
-    print("ERREUR : binaire TDP introuvable. Lance 'make' d'abord.")
+if TPD_BIN is None:
+    print("ERREUR : binaire TPD introuvable. Lance 'make' d'abord.")
     sys.exit(1)
 
-# Session TCP avec TDP (un seul client a la fois, simplifie).
-class TDPSession:
+# Session TCP avec TPD (un seul client a la fois, simplifie).
+class TPDSession:
     def __init__(self):
         self.sock = None
         self.lock = threading.Lock()
@@ -48,7 +48,7 @@ class TDPSession:
     def start(self):
         """Lance tdp --serve en arriere-plan et connecte le socket."""
         self.process = subprocess.Popen(
-            [TDP_BIN, "--serve", str(TDP_PORT)],
+            [TPD_BIN, "--serve", str(TPD_PORT)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -57,7 +57,7 @@ class TDPSession:
         for _ in range(10):
             try:
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.sock.connect(("localhost", TDP_PORT))
+                self.sock.connect(("localhost", TPD_PORT))
                 self.sock.settimeout(2.0)
                 return True
             except ConnectionRefusedError:
@@ -87,7 +87,7 @@ class TDPSession:
                 return f"(erreur: {e})"
 
     def stop(self):
-        """Arrete le processus TDP."""
+        """Arrete le processus TPD."""
         try:
             if self.sock:
                 self.sock.sendall(b"quit\n")
@@ -97,9 +97,9 @@ class TDPSession:
         if self.process:
             self.process.terminate()
 
-session = TDPSession()
+session = TPDSession()
 
-class TDPHandler(http.server.BaseHTTPRequestHandler):
+class TPDHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path != "/cmd":
             self.send_error(404)
@@ -141,8 +141,8 @@ class TDPHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
         elif self.path == "/status":
             result = {
-                "tdp_bin": TDP_BIN,
-                "tdp_port": TDP_PORT,
+                "tdp_bin": TPD_BIN,
+                "tdp_port": TPD_PORT,
                 "connected": session.sock is not None,
             }
             self.send_response(200)
@@ -159,14 +159,14 @@ class ReuseTCPServer(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
 
 def main():
-    print(f"Demarrage de tdp --serve sur le port {TDP_PORT}...")
+    print(f"Demarrage de tdp --serve sur le port {TPD_PORT}...")
     if not session.start():
         print("ERREUR : impossible de connecter a tdp --serve.")
         sys.exit(1)
-    print(f"TDP Web — ouvre http://localhost:{WEB_PORT} dans ton navigateur")
-    print(f"Binaire TDP : {TDP_BIN}")
+    print(f"TPD Web — ouvre http://localhost:{WEB_PORT} dans ton navigateur")
+    print(f"Binaire TPD : {TPD_BIN}")
 
-    with ReuseTCPServer(("", WEB_PORT), TDPHandler) as httpd:
+    with ReuseTCPServer(("", WEB_PORT), TPDHandler) as httpd:
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

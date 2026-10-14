@@ -1,8 +1,8 @@
 /* Accordeur : detecte la frequence fondamentale d'un signal mono et la
  * compare a la note la plus proche. Utilise l'autocorrelation (robuste
  * pour les notes de guitare). */
-#ifndef TDP_TUNER_H
-#define TDP_TUNER_H
+#ifndef TPD_TUNER_H
+#define TPD_TUNER_H
 
 /* Resultat de l'analyse d'un buffer d'entree. */
 typedef struct {
@@ -22,4 +22,4 @@ void tuner_analyze(const float *buf, int n, double sr, tuner_result *out);
  *   E2  -12 cents (trop grave)  [confiance 87%] */
 void tuner_print(const tuner_result *r);
 
-#endif /* TDP_TUNER_H */
+#endif /* TPD_TUNER_H */

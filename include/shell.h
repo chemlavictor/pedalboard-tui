@@ -1,6 +1,6 @@
-/* Shell de commandes TDP CLI. */
-#ifndef TDP_SHELL_H
-#define TDP_SHELL_H
+/* Shell de commandes TPD CLI. */
+#ifndef TPD_SHELL_H
+#define TPD_SHELL_H
 
 #include "pedals.h"
 
@@ -20,4 +20,4 @@ void shell_server_init(void);
  * Retourne 0 si ok (ou ligne vide/commentaire), -1 si erreur. */
 int parse_tdp_line(const char *line, int lineno, chain_t *c);
 
-#endif /* TDP_SHELL_H */
+#endif /* TPD_SHELL_H */

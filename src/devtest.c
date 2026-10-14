@@ -75,7 +75,7 @@ static const char *strcasestr(const char *haystack, const char *needle) {
 
 int devtest_test_outputs(int device, int duration_ms, const char *api_filter) {
   if (Pa_Initialize() != paNoError) {
-    printf("TDP: PortAudio indisponible\n");
+    printf("TPD: PortAudio indisponible\n");
     return -1;
   }
 
@@ -85,14 +85,14 @@ int devtest_test_outputs(int device, int duration_ms, const char *api_filter) {
   if (device >= 0) {
     const PaDeviceInfo *info = Pa_GetDeviceInfo(device);
     if (!info || info->maxOutputChannels < 1) {
-      printf("TDP: device %d n'est pas une sortie\n", device);
+      printf("TPD: device %d n'est pas une sortie\n", device);
       Pa_Terminate();
       return 0;
     }
     const char *api_name = device_api_name(device);
     char name[128];
     safe_name(info->name, name, sizeof name);
-    printf("TDP: test de la sortie — ecoute le bip (%d s)\n", duration_ms / 1000);
+    printf("TPD: test de la sortie — ecoute le bip (%d s)\n", duration_ms / 1000);
     printf("    sortie : [%2d]  [%-12s]  %s\n\n", device, api_name, name);
 
     PaStreamParameters out_params;
@@ -115,7 +115,7 @@ int devtest_test_outputs(int device, int duration_ms, const char *api_filter) {
     Pa_Sleep(duration_ms);
     Pa_StopStream(stream);
     Pa_CloseStream(stream);
-    printf("\nTDP: test termine.\n");
+    printf("\nTPD: test termine.\n");
     Pa_Terminate();
     return 0;
   }
@@ -123,12 +123,12 @@ int devtest_test_outputs(int device, int duration_ms, const char *api_filter) {
   /* Cas 2 : teste tous les devices (option : filtre API). */
   int n_dev = Pa_GetDeviceCount();
   if (n_dev <= 0) {
-    printf("TDP: aucun peripherique audio\n");
+    printf("TPD: aucun peripherique audio\n");
     Pa_Terminate();
     return 0;
   }
 
-  printf("TDP: test des sorties%s — ecoute le bip sur chaque peripherique\n",
+  printf("TPD: test des sorties%s — ecoute le bip sur chaque peripherique\n",
          api_filter ? " (filtre: %s)" : "");
   printf("    (bip 440 Hz, 0.5 s, espace de 1 s)\n\n");
 
@@ -183,7 +183,7 @@ int devtest_test_outputs(int device, int duration_ms, const char *api_filter) {
   }
 
   if (tested == 0) printf("  (aucun device ne correspond au filtre)\n");
-  printf("\nTDP: test termine. Note le numero du device qui a fait le son.\n");
+  printf("\nTPD: test termine. Note le numero du device qui a fait le son.\n");
   Pa_Terminate();
   return 0;
 }

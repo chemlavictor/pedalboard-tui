@@ -1,4 +1,4 @@
-/* TDP CLI — point d'entrée.
+/* TPD CLI — point d'entrée.
  * ./tdp            -> shell interactif
  * ./tdp <script>   -> execute le script ligne par ligne
  * ./tdp --serve <port> -> mode serveur TCP (ecoute les commandes)
@@ -11,8 +11,8 @@
 #include "shell.h"
 #include "server.h"
 
-#ifndef TDP_GIT_HASH
-#define TDP_GIT_HASH "nogit"
+#ifndef TPD_GIT_HASH
+#define TPD_GIT_HASH "nogit"
 #endif
 
 int main(int argc, char **argv) {
@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
   if (argc >= 2 && strcmp(argv[1], "--serve") == 0) {
     int port = 8080;
     if (argc >= 3) port = atoi(argv[2]);
-    return tdp_server_run(port);
+    return tpd_server_run(port);
   }
 
   /* Mode classique : shell interactif ou script. */

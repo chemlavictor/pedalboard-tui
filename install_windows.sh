@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  TDP - Installation du compilateur Windows (MSYS2) + build
+#  TPD - Installation du compilateur Windows (MSYS2) + build
 #  A lancer DEPUIS le shell "MSYS2 MINGW64".
 #
 #  Ce script :
@@ -17,7 +17,7 @@
 set -e
 
 echo "=================================================="
-echo " TDP - Installation Windows (MSYS2 MINGW64)"
+echo " TPD - Installation Windows (MSYS2 MINGW64)"
 echo "=================================================="
 
 # 0. On doit etre dans le bon shell (MINGW64), sinon gcc n'existera pas.

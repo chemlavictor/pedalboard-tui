@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  TDP - build Windows (MinGW direct, secours sans MSYS2)
+REM  TPD - build Windows (MinGW direct, secours sans MSYS2)
 REM  Produit dist\ : tdp.exe + portaudio.dll + README.md
 REM
 REM  Pre-requis : gcc (MinGW) et PortAudio (headers + lib) dans PATH.

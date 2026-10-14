@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  TDP - LANCER sur Windows
+REM  TPD - LANCER sur Windows
 REM  Fonctionne depuis n'importe quel dossier (pas de chemin UNC).
 REM  Cherche tdp.exe ici, dans dist/, ou dans build/.
 REM ============================================================
@@ -23,7 +23,7 @@ REM La DLL PortAudio doit etre a cote de l'exe.
 set "DLLDIR=%~dp0%EXE%"
 if not exist "%DLLDIR%portaudio.dll" if not exist "%DLLDIR%libportaudio-0.dll" (
     echo ATTENTION : portaudio.dll introuvable a cote de tdp.exe.
-    echo   Copie-la dans le meme dossier que tdp.exe, sinon TDP ne demarrera pas.
+    echo   Copie-la dans le meme dossier que tdp.exe, sinon TPD ne demarrera pas.
 )
 
 echo Demarrage de : %EXE%

@@ -1,6 +1,6 @@
 /* Test des entrees audio : lit le volume d'un device (ou tous) d'entree. */
-#ifndef TDP_INTEST_H
-#define TDP_INTEST_H
+#ifndef TPD_INTEST_H
+#define TPD_INTEST_H
 
 /* Teste les entrees.
  * device >= 0 : teste ce device specifique pendant duration_ms (volume en continu).
@@ -8,4 +8,4 @@
  * Retourne 0 si ok, -1 si PortAudio indisponible. */
 int in_test_run(int device, int duration_ms);
 
-#endif /* TDP_INTEST_H */
+#endif /* TPD_INTEST_H */

@@ -1,5 +1,5 @@
-#ifndef TDP_DSP_H
-#define TDP_DSP_H
+#ifndef TPD_DSP_H
+#define TPD_DSP_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -31,4 +31,4 @@ void dsp_process(const float *in, float *out, size_t n,
                  float G, float V, bool bypass, bool mute,
                  float sr, dsp_vu *vu);
 
-#endif /* TDP_DSP_H */
+#endif /* TPD_DSP_H */

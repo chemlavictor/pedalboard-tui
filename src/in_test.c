@@ -104,14 +104,14 @@ static void test_one_input(int dev, int duration_ms) {
 
 int in_test_run(int device, int duration_ms) {
   if (Pa_Initialize() != paNoError) {
-    printf("TDP: PortAudio indisponible\n");
+    printf("TPD: PortAudio indisponible\n");
     return -1;
   }
 
   if (device >= 0) {
     /* Teste un device specifique. */
     test_one_input(device, duration_ms);
-    printf("TDP: test termine.\n");
+    printf("TPD: test termine.\n");
     Pa_Terminate();
     return 0;
   }
@@ -119,12 +119,12 @@ int in_test_run(int device, int duration_ms) {
   /* Teste tous les devices d'entree (2 s chacun). */
   int n_dev = Pa_GetDeviceCount();
   if (n_dev <= 0) {
-    printf("TDP: aucun peripherique audio\n");
+    printf("TPD: aucun peripherique audio\n");
     Pa_Terminate();
     return 0;
   }
 
-  printf("TDP: test des entrees — parle dans le micro sur chaque peripherique\n");
+  printf("TPD: test des entrees — parle dans le micro sur chaque peripherique\n");
   printf("    (lecture 2 s par device, montre le volume max percu)\n\n");
 
   int tested = 0;
@@ -178,7 +178,7 @@ int in_test_run(int device, int duration_ms) {
   }
 
   if (tested == 0) printf("  (aucune entree)\n");
-  printf("\nTDP: test termine. Note le numero du device qui a capt du son.\n");
+  printf("\nTPD: test termine. Note le numero du device qui a capt du son.\n");
   Pa_Terminate();
   return 0;
 }

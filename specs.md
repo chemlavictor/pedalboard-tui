@@ -1,7 +1,7 @@
 # Spécifications Techniques : Pédale de Distorsion TUI en C
 
 ## 1. Vue d'ensemble du projet
-- **Nom du projet :** Terminal Distortion Pedal (TDP)
+- **Nom du projet :** Terminal Pedal Board (TPD)
 - **Langage :** C (Standard C11)
 - **Interface :** TUI (Terminal User Interface) gérée via `ncurses`
 - **Audio :** `PortAudio` (gestion bas niveau, temps réel et ultra-basse latence)
@@ -85,7 +85,7 @@ input → [Gain G] → [tanh clipping] → [Master V] → output
 ### Mise en page (exemple)
 ```
 ┌──────────────────────────────────────────────┐
-│  TDP — Terminal Distortion Pedal      [ON]   │
+│  TPD — Terminal Pedal Board      [ON]   │
 │                                              │
 │  > Gain   [=====-----]  50%                  │
 │    Master [=========--]  75%                 │

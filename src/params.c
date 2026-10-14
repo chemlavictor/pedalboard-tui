@@ -1,6 +1,6 @@
 #include "params.h"
 
-tdp_params P;
+tpd_params P;
 
 void params_init(void) {
   atomic_init(&P.gain, 0.5f);

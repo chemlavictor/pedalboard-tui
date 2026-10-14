@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  TDP - LANCER sur Linux (macOS aussi)
+#  TPD - LANCER sur Linux (macOS aussi)
 #  - Si build/tdp n'existe pas : build d'abord.
 #  - Puis démarre la TUI.
 # ============================================================
