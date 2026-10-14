@@ -36,6 +36,11 @@ static char g_rxbuf[BUF_SIZE];
 /* Fichier temporaire pour capturer la sortie. */
 static const char *g_tmp_out = "/tmp/tdp_server_out.txt";
 
+/* Sauvegarde du handle stdout Windows (pour restaurer apres redirection). */
+#ifdef _WIN32
+static HANDLE g_saved_stdout_h = NULL;
+#endif
+
 /* Sauvegarde de stdout (pour restaurer apres la redirection). */
 static FILE *g_saved_stdout = NULL;
 
@@ -54,6 +59,10 @@ static int sock_sendline(sock_t s, const char *line) {
 
 /* Redirige stdout vers le fichier temporaire. */
 static void redirect_stdout_on(void) {
+#ifdef _WIN32
+  /* Sauvegarde le handle stdout avant de le remplacer. */
+  if (!g_saved_stdout_h) g_saved_stdout_h = GetStdHandle(STD_OUTPUT_HANDLE);
+#endif
   g_saved_stdout = stdout;
   /* Ouvre le fichier temporaire en mode write. */
   FILE *f = fopen(g_tmp_out, "w");
@@ -69,26 +78,23 @@ static void redirect_stdout_on(void) {
 
 /* Restaure stdout. */
 static void redirect_stdout_off(void) {
-  fflush(stdout);
-  /* Re-ouvre stdout. */
 #ifdef _WIN32
-  /* Sur Windows, on ne peut pas facilement restaurer stdout.
-   * On utilise GetStdHandle. */
-  FILE *f = fdopen(_duplicHandle(GetStdHandle(STD_OUTPUT_HANDLE)), "w");
-  if (f) {
-    dup2(_fileno(f), _fileno(stdout));
-    fclose(f);
+  /* Restaure stdout en re-ouvrant sur le handle sauvegarde. */
+  if (g_saved_stdout_h) {
+    HANDLE h = g_saved_stdout_h;
+    int fd = _open_osfhandle((intptr_t)h, _O_TEXT);
+    if (fd >= 0) {
+      fflush(stdout);
+      _dup2(fd, _fileno(stdout));
+      _close(fd);
+    }
   }
 #else
-  /* Sur POSIX, on peut restaurer avec dup2. */
+  /* Sur POSIX : re-ouvre stdout sur /dev/tty (la console). */
   fflush(stdout);
-  fclose(stdout);
-  /* Re-ouvre /dev/tty ou le descripteur sauvegarde. */
-  /* Simplifie : on re-ouvre stdout via le descripteur 1. */
-  FILE *f = fdopen(1, "w");
-  if (f) {
-    /* stdout est maintenant f. */
-    (void)f;
+  if (fclose(stdout) == 0) {
+    stdout = fopen("/dev/tty", "w");
+    if (stdout) setvbuf(stdout, NULL, _IONBF, 0);
   }
 #endif
 }
