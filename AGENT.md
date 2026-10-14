@@ -21,14 +21,16 @@ Règles à suivre **à chaque commit et pour l'organisation du travail** dans ce
 
 - **Format des tags de release** : `YYYY.MM.DD.XX` (date + séquence du jour).
   - `YYYY.MM.DD` = date de la release (UTC).
-  - `XX` = compteur de release dans la journée, 01, 02, 03… (2 chiffres).
-  - Exemples : `2026.10.14.01` (1ère release du 14 oct 2026),
-    `2026.10.14.02` (2e release du même jour), `2026.10.15.01`.
+  - `XX` = **compteur de release dans la journée**, 01, 02, 03… (2 chiffres).
+  - **Même jour** : on **incrémente** `XX` (01 → 02 → 03…).
+  - **Jour différent** : on **réinitialise** à 01 (ex. `2026.10.15.01`).
+  - Exemples : `2026.10.14.01` (1ère du 14 oct), `2026.10.14.02` (2e du 14 oct),
+    `2026.10.14.03` (3e du 14 oct), `2026.10.15.01` (1ère du 15 oct).
 - **Créer une release** :
-  ```
-  git tag -a 2026.10.14.01 -m "🔧 Chore: release 2026.10.14.01"
-  git push origin 2026.10.14.01
-  ```
+  1. Vérifier le dernier tag du jour : `git tag -l 'YYYY.MM.DD.*' | sort | tail -1`
+  2. Prendre `XX` du dernier tag + 1 (ou 01 si aucun tag ce jour-là).
+  3. `git tag -a YYYY.MM.DD.XX -m "🔧 Chore: release YYYY.MM.DD.XX"`
+  4. `git push origin YYYY.MM.DD.XX`
   Le push du tag déclenche le workflow `.github/workflows/build.yml`
   (pattern `tags: ['[0-9]*.[0-9]*.[0-9]*.[0-9]*']`) qui compile Linux +
   Windows et publie la release GitHub avec les 2 binaires.
