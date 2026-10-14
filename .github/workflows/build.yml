@@ -59,8 +59,9 @@ jobs:
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
-        shell: C:\msys64\usr\bin\bash.exe -lc {0}
+        shell: msys
         run: |
+          export PATH="/c/msys64/mingw64/bin:/c/msys64/usr/bin:$PATH"
           make dist
           cd dist
           7z a ../tdp-${{ matrix.artifact }}.${{ matrix.ext }} .
