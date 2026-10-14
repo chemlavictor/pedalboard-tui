@@ -84,7 +84,7 @@ static void redirect_stdout_off(void) {
   /* Restaure stdout en re-ouvrant sur le handle sauvegarde. */
   if (g_saved_stdout_h) {
     HANDLE h = g_saved_stdout_h;
-    int fd = _open_osfhandle((intptr_t)h, _O_TEXT);
+    int fd = _open_osfhandle((intptr_t)h, 0x1); /* _O_TEXT = 0x1 */
     if (fd >= 0) {
       fflush(stdout);
       _dup2(fd, _fileno(stdout));
