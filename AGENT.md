@@ -43,6 +43,23 @@ Règles à suivre **à chaque commit et pour l'organisation du travail** dans ce
   le hash de `git rev-parse --short HEAD`.
 - **La doc (README, documentation) doit lister les releases** dans
   l'ordre chronologique avec leur contenu, comme un changelog.
+- **Release notes (changelog)** : chaque release GitHub doit avoir des
+  **release notes** (changelog) qui résument les changements depuis la
+  release précédente. Le workflow (`.github/workflows/build.yml`, job
+  `release`) génère automatiquement les release notes via
+  `softprops/action-gh-release` avec `generate_release_notes: true`, qui
+  liste les commits et les PRs depuis le dernier tag.
+  - Les release notes générées sont la source de vérité du changelog :
+    on ne maintient PAS un fichier `CHANGELOG.md` séparé.
+  - Chaque commit doit donc avoir un **sujet clair et descriptif**
+    (c'est lui qui apparaît dans les release notes). Un sujet vague
+    (`fix`, `update`, `wip`) rend les release notes illisibles.
+  - Le corps du commit (optionnel) apporte les détails techniques ;
+    les release notes GitHub l'incluent aussi.
+  - Pour une release importante (nouvelle feature majeure, breaking
+    change), on peut éditer les release notes après la publication pour
+    ajouter un résumé en haut (ce que l'auto-généré ne fait pas).
+
 
 
 ## 4. Format du message de commit
