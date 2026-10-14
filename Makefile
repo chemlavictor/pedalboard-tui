@@ -83,7 +83,7 @@ check-app: $(TARGET)
 WIN_TARGET  := $(BUILD)/tdp.exe
 WIN_OBJS    := $(WIN_SRCS:$(SRC_DIR)/%.c=$(BUILD)/win_%.o)
 WIN_CFLAGS  := -std=c11 -O2 -Wall -Wextra -I$(INC_DIR) $(VERSION_FLAG)
-WIN_LDLIBS  := -lportaudio -lm
+WIN_LDLIBS  := -lportaudio -lws2_32 -lm
 
 windows: $(WIN_TARGET)
 $(WIN_TARGET): $(WIN_OBJS)

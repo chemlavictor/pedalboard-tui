@@ -13,7 +13,7 @@ jobs:
     name: Tests unitaires (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install deps
         run: |
           sudo apt-get update
@@ -36,7 +36,7 @@ jobs:
             artifact: windows
             ext: zip
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install deps (Linux)
         if: runner.os == 'Linux'
@@ -69,7 +69,7 @@ jobs:
           C:\msys64\usr\bin\bash.exe -c 'export PATH="/c/msys64/mingw64/bin:/c/msys64/usr/bin:$PATH" && make dist && cd dist && 7z a ../tdp-${{ matrix.artifact }}.${{ matrix.ext }} .'
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: tdp-${{ matrix.artifact }}
           path: tdp-${{ matrix.artifact }}.${{ matrix.ext }}
@@ -82,7 +82,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: artifacts
       - name: Create release with binaries + changelog
