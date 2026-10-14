@@ -59,12 +59,12 @@ jobs:
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
-        shell: msys
+        shell: pwsh
         run: |
-          export PATH="/c/msys64/mingw64/bin:/c/msys64/usr/bin:$PATH"
-          make dist
-          cd dist
-          7z a ../tdp-${{ matrix.artifact }}.${{ matrix.ext }} .
+          # bash -lc source le profile MSYS2 (PATH mingw64 + usr/bin)
+          # pwsh gère correctement le login shell, contrairement a
+          # 'shell: msys' qui ne source pas /etc/profile.
+          C:\msys64\usr\bin\bash.exe -lc 'make dist && cd dist && 7z a ../tdp-${{ matrix.artifact }}.${{ matrix.ext }} .'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
