@@ -1,0 +1,91 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Tests unitaires (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential portaudio19-dev
+      - name: Run tests
+        run: make test
+
+  build:
+    name: Build ${{ matrix.os }}
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: linux
+            ext: tar.gz
+          - os: windows-latest
+            artifact: windows
+            ext: zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential portaudio19-dev
+
+      - name: Install deps (Windows MSYS2)
+        if: runner.os == 'Windows'
+        run: |
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-portaudio make"
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          make
+          mkdir -p dist
+          cp build/tdp dist/tdp
+          tar czf tdp-${{ matrix.artifact }}.${{ matrix.ext }} -C dist .
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: msys
+        run: |
+          make dist
+          cd dist
+          7z a ../tdp-${{ matrix.artifact }}.${{ matrix.ext }} .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tdp-${{ matrix.artifact }}
+          path: tdp-${{ matrix.artifact }}.${{ matrix.ext }}
+
+  release:
+    name: Publier la release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v*')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create release with binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/tdp-linux/tdp-linux.tar.gz
+            artifacts/tdp-windows/tdp-windows.zip
+          generate_release_notes: true

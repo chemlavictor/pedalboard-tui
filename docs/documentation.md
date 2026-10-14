@@ -16,7 +16,21 @@ Sommaire :
 
 ### 1.1 Installer
 
-#### Linux / macOS (ou WSL)
+#### Option A — Binaire précompilé (sans compiler)
+
+Chaque tag `v*` publie une **release GitHub** avec les binaires :
+`tdp-linux.tar.gz` (Linux x86_64) et `tdp-windows.zip` (Windows x86_64,
+avec `portaudio.dll` incluse).
+
+- **Linux** : `apt install -y libportaudio2` (runtime), puis télécharger la
+  release, dézipper, `./tdp`.
+- **Windows** : télécharger `tdp-windows.zip`, dézipper, double-cliquer
+  `tdp.exe`.
+
+Pas de MSYS2 ni de compiler requis. Voir le [README](../README.md) pour les
+détails.
+
+#### Option B — Compiler depuis le source (Linux / macOS / WSL)
 
 ```bash
 # 1. Dépendances (une fois)
@@ -32,7 +46,7 @@ make && make run
 
 Produit : `build/tdp`.
 
-#### Windows (natif, sans WSL)
+#### Option C — Compiler depuis le source (Windows natif, MSYS2)
 
 1. Installer **MSYS2** (une fois) : <https://www.msys2.org/> → `C:\msys64`.
 2. Ouvrir le shell **« MSYS2 MINGW64 »** (menu démarrer) — *pas* « MSYS2 » normal.

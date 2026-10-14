@@ -6,6 +6,35 @@ Chaîne de pédales audio temps réel (C11 + PortAudio), pilotée par un **shell
 
 ## Démarrage rapide
 
+### Option 1 — Binaire précompilé (sans compiler)
+
+Chaque tag `v*` publie une **release GitHub** avec les binaires prêts à l'emploi :
+
+| Plateforme | Archive | Contenu |
+|------------|---------|---------|
+| Linux (x86_64) | `tdp-linux.tar.gz` | `tdp` (binaire ELF, lien dynamique `libportaudio.so`) |
+| Windows (x86_64) | `tdp-windows.zip` | `tdp.exe` + `portaudio.dll` + `README.md` |
+
+**Linux** :
+```bash
+apt install -y libportaudio2   # dépendance runtime (une fois)
+curl -LO <url-release>/tdp-linux.tar.gz
+tar xzf tdp-linux.tar.gz
+./tdp                          # jouer / enregistrer
+```
+
+**Windows** :
+```
+1. Télécharger tdp-windows.zip depuis la release, le dézipper dans un dossier.
+2. Double-cliquer tdp.exe (ou l'ouvrir dans un terminal) :
+   cd C:\chemin\vers\le\dossier
+   tdp.exe
+```
+
+> Pas de MSYS2 ni de compiler requis pour l'option 1. Le binaire est celui du tag courant ; `help` affiche le hash git du build.
+
+### Option 2 — Compiler depuis le source
+
 ### Linux / macOS (ou WSL)
 ```bash
 # 1. Dépendances (une fois)
