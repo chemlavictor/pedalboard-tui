@@ -1,4 +1,4 @@
-# Documentation — Terminal Distortion Pedal (TDP)
+# Documentation — Terminal Pedal Board (TPD)
 
 Une chaîne de pédales audio **temps réel** écrite en C11 + PortAudio, pilotée par un shell de commandes. Le même code tourne sous **Linux, macOS et Windows**.
 
@@ -149,9 +149,9 @@ Les fichiers WAV (PCM 16-bit, mono) atterrissent dans `recordings/` avec un nom 
 Le son est une **pression d'air** qui varie dans le temps. Un micro (ou un jack guitare) la convertit en signal électrique proportionnel. Pour le numérique, on fait deux choses :
 
 1. **Échantillonnage** : on mesure la valeur du signal à des intervalles réguliers. À **48 000 Hz**, on mesure 48 000 fois par seconde — chaque mesure s'appelle un *échantillon*. (Le théorème de Nyquist dit que l'on peut alors restituer fidèlement tout signal jusqu'à 24 kHz, i.e. au-delà de l'oreille humaine.)
-2. **Quantification** : chaque mesure est stockée sur un nombre fini de bits. Ici TDP travaille en **float 32-bit** entre 0 et 1 (valeurs `[-1.0, +1.0]`) pour la précision, puis convertit en **PCM 16-bit** à l'enregistrement WAV.
+2. **Quantification** : chaque mesure est stockée sur un nombre fini de bits. Ici TPD travaille en **float 32-bit** entre 0 et 1 (valeurs `[-1.0, +1.0]`) pour la précision, puis convertit en **PCM 16-bit** à l'enregistrement WAV.
 
-Un fichier audio est donc une **liste de nombres** : une succession d'échantillons. TDP manipule cette liste en temps réel, un petit bloc à la fois.
+Un fichier audio est donc une **liste de nombres** : une succession d'échantillons. TPD manipule cette liste en temps réel, un petit bloc à la fois.
 
 ### 2.2 Comment PortAudio met le son à disposition
 
@@ -161,7 +161,7 @@ Un fichier audio est donc une **liste de nombres** : une succession d'échantill
 - On lui donne un **callback** : une fonction que PortAudio appelle **périodiquement, depuis son propre thread temps réel**, à chaque fois que le matériel a produit un bloc d'échantillons d'entrée (ou qu'il en faut pour la sortie).
 - Dans ce callback, on reçoit le **buffer d'entrée** (les échantillons captés par le micro/jack) et on doit **remplir le buffer de sortie** avant de retourner.
 
-TDP ouvre le stream ainsi (voir `try_open` dans `src/audio.c`) :
+TPD ouvre le stream ainsi (voir `try_open` dans `src/audio.c`) :
 
 ```c
 inp.device    = device_choisie_ou_defaut;
@@ -185,9 +185,9 @@ Avec un bloc de 256 échantillons à 48 kHz, PortAudio rappelle le callback tout
 
 ### 2.3 Comment chaque canal est montré
 
-**Canal** = une piste audio indépendante. Le stéréo standard = 2 canaux (gauche/droite). TDP traite en **mono** : un seul canal.
+**Canal** = une piste audio indépendante. Le stéréo standard = 2 canaux (gauche/droite). TPD traite en **mono** : un seul canal.
 
-- **Entrée** : `inp.channelCount = 1`. Si la carte impose un nombre de canaux différent, PortAudio applique le mixage/resampling demandé, mais TDP lit un unique flot d'échantillons mono. Le signal d'une guitare (jack 6,35 mm ou micro) est naturellement mono.
+- **Entrée** : `inp.channelCount = 1`. Si la carte impose un nombre de canaux différent, PortAudio applique le mixage/resampling demandé, mais TPD lit un unique flot d'échantillons mono. Le signal d'une guitare (jack 6,35 mm ou micro) est naturellement mono.
 - **Sortie** : `outp.channelCount = 1`. Le signal traité est envoyé sur un canal mono ; le système audio le diffuse (il sera en fait envoyé aux deux hauts-parleurs en double si la sortie est stéréo, selon la configuration matérielle).
 
 Dans le callback, le « canal » est littéralement **un tableau `float` de `n` échantillons** :
@@ -335,7 +335,7 @@ Le ring buffer d'enregistrement est la seule structure que le RT **écrit** en c
 
 ### 5.3 Pourquoi ce modèle ?
 
-Le thread audio a ~5 ms pour traiter 256 échantillons. Un `malloc`, un `printf` ou un lock mal placé peut **bloquer** ce thread → le son saccade ou coupe. En l'isolant strictement (mémoire statique, lock-free, zéro I/O), TDP garantit une latence faible et stable, et le shell peut faire tout ce qu'il veut (disque, fichiers, affichage) sans risque pour le son. C'est le schéma classique des applications audio temps réel.
+Le thread audio a ~5 ms pour traiter 256 échantillons. Un `malloc`, un `printf` ou un lock mal placé peut **bloquer** ce thread → le son saccade ou coupe. En l'isolant strictement (mémoire statique, lock-free, zéro I/O), TPD garantit une latence faible et stable, et le shell peut faire tout ce qu'il veut (disque, fichiers, affichage) sans risque pour le son. C'est le schéma classique des applications audio temps réel.
 
 ---
 
