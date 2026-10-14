@@ -1,4 +1,34 @@
-# Pedalboard TUI — Terminal Distortion Pedal (TDP) — **CLI**
+# Pedalboard TUI — Terminal Pedal Board (TPD) — **CLI**
+
+[![Build & Release](https://github.com/chemlavictor/pedalboard-tui/actions/workflows/build.yml/badge.svg)](https://github.com/chemlavictor/pedalboard-tui/actions/workflows/build.yml)
+[![Latest Release](https://img.shields.io/github/v/release/chemlavictor/pedalboard-tui?label=release)](https://github.com/chemlavictor/pedalboard-tui/releases/latest)
+
+## ⬇️ Télécharger le binaire
+
+Dernière release : **[chemlavictor/pedalboard-tui/releases/latest](https://github.com/chemlavictor/pedalboard-tui/releases/latest)**
+
+**Linux** (x86_64) :
+```bash
+# 1. Dépendance runtime (une fois)
+apt install -y libportaudio2
+# 2. Télécharger + dézipper la dernière release
+curl -LO https://github.com/chemlavictor/pedalboard-tui/releases/latest/download/tdp-linux.tar.gz
+tar xzf tdp-linux.tar.gz
+# 3. Lancer
+./tdp
+```
+
+**Windows** (x86_64) :
+```powershell
+# 1. Télécharger la dernière release (PowerShell)
+Invoke-WebRequest -Uri "https://github.com/chemlavictor/pedalboard-tui/releases/latest/download/tdp-windows.zip" -OutFile tdp-windows.zip
+# 2. Dézipper
+Expand-Archive tdp-windows.zip -DestinationPath .\tdp
+# 3. Lancer
+.\tdp\tdp.exe
+```
+
+> Pas de MSYS2 ni de compiler requis. `help` affiche le hash git du build.
 
 Chaîne de pédales audio temps réel (C11 + PortAudio), pilotée par un **shell de commandes**. Plus de TUI/ncurses : tout se fait au clavier via des commandes texte (`load`, `start`, `record`, ...).
 
