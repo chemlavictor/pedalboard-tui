@@ -14,6 +14,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#include <io.h>   /* _open_osfhandle, _dup2, _close, _O_TEXT */
+#include <stdio.h>
 #pragma comment(lib, "ws2_32")
 typedef SOCKET sock_t;
 #define SOCKET_INVALID_VAL INVALID_SOCKET
