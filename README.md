@@ -1,7 +1,7 @@
 # Pedalboard TUI — Terminal Pedal Board (TPD) — **CLI**
 
 [![Build & Release](https://github.com/chemlavictor/pedalboard-tui/actions/workflows/build.yml/badge.svg)](https://github.com/chemlavictor/pedalboard-tui/actions/workflows/build.yml)
-[![Latest Release](https://img.shields.io/github/v/release/chemlavictor/pedalboard-tui?label=release)](https://github.com/chemlavictor/pedalboard-tui/releases/latest)
+[![Latest Release](https://img.shields.io/badge/release-2026.10.14.01-brightgreen?logo=github)](https://github.com/chemlavictor/pedalboard-tui/releases/tag/2026.10.14.01)
 
 ## ⬇️ Télécharger le binaire
 
